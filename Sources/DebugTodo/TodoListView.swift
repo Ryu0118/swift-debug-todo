@@ -7,14 +7,14 @@ public struct TodoListView<S: Storage>: View {
 #if os(iOS)
     @State private var editMode: EditMode = .inactive
 #endif
-
+    
     /// Creates a new todo list view.
     ///
     /// - Parameter storage: The storage to use for persisting todo items.
     public init(storage: S) {
         self.repository = TodoRepository(storage: storage)
     }
-
+    
     public var body: some View {
         Group {
             if repository.activeTodos.isEmpty {
@@ -49,35 +49,35 @@ public struct TodoListView<S: Storage>: View {
                         repository.delete(at: indexSet, from: repository.activeTodos)
                     }
                 }
-                .toolbar {
-#if os(iOS)
-                    ToolbarItem(placement: .topBarLeading) {
-                        EditButton()
-                    }
-#endif
-                    ToolbarItem(placement: .automatic) {
-                        HStack {
-                            NavigationLink {
-                                DoneTodoListView(repository: repository)
-                            } label: {
-                                Image(systemName: "checkmark.circle")
-                            }
-
-                            Button {
-                                isShowingAddView = true
-                            } label: {
-                                Image(systemName: "plus")
-                            }
-                        }
-                    }
-                }
-                .sheet(isPresented: $isShowingAddView) {
-                    AddEditTodoView(repository: repository)
-                }
-#if os(iOS)
-                .environment(\.editMode, $editMode)
-#endif
             }
         }
+        .toolbar {
+#if os(iOS)
+            ToolbarItem(placement: .topBarLeading) {
+                EditButton()
+            }
+#endif
+            ToolbarItem(placement: .automatic) {
+                HStack {
+                    NavigationLink {
+                        DoneTodoListView(repository: repository)
+                    } label: {
+                        Image(systemName: "checkmark.circle")
+                    }
+                    
+                    Button {
+                        isShowingAddView = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $isShowingAddView) {
+            AddEditTodoView(repository: repository)
+        }
+#if os(iOS)
+        .environment(\.editMode, $editMode)
+#endif
     }
 }
