@@ -420,4 +420,44 @@ struct DoneTodoListModelTests {
         #expect(model.effectiveDoneState(for: displayedItem2) == true)
         #expect(repository.doneTodos.count == 1)
     }
+
+    @Test("Toggled items preserve their position in done list")
+    func toggledItemsPreservePositionInDoneList() {
+        let baseDate = Date()
+
+        // Create storage with pre-populated done items
+        let first = TodoItem(title: "First", detail: "", isDone: true, createdAt: baseDate, updatedAt: baseDate)
+        let second = TodoItem(title: "Second", detail: "", isDone: true, createdAt: baseDate.addingTimeInterval(1), updatedAt: baseDate.addingTimeInterval(1))
+        let third = TodoItem(title: "Third", detail: "", isDone: true, createdAt: baseDate.addingTimeInterval(2), updatedAt: baseDate.addingTimeInterval(2))
+
+        let storage = InMemoryStorage()
+        try! storage.save([first, second, third])
+
+        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+        let model = DoneTodoListModel(repository: repository)
+
+        model.loadDoneTodos()
+        let items = model.displayedDoneTodos
+
+        // Verify initial order (newest updatedAt first)
+        #expect(items.count == 3)
+        #expect(items[0].title == "Third")
+        #expect(items[1].title == "Second")
+        #expect(items[2].title == "First")
+
+        // Toggle the middle item (reopen it)
+        let middleItem = items[1]
+        model.handleReopen(middleItem)
+
+        let displayedAfterToggle = model.displayedDoneTodos
+        #expect(displayedAfterToggle.count == 3)
+
+        // Order should be preserved: Third, Second (toggled), First
+        #expect(displayedAfterToggle[0].title == "Third")
+        #expect(displayedAfterToggle[1].title == "Second")
+        #expect(displayedAfterToggle[2].title == "First")
+
+        // Middle item should be marked as not done
+        #expect(displayedAfterToggle[1].isDone == false)
+    }
 }
