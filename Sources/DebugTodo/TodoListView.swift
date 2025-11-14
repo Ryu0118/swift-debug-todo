@@ -24,22 +24,17 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     // In-memory set to track deleted item IDs (items that should be hidden)
     private(set) var deletedItemIDs: Set<TodoItem.ID> = []
 
-    // In-memory cache of all todos at the time of view appearance
-    private var cachedActiveTodos: [TodoItem] = []
-
-    // In-memory cache of toggled items (items that have been toggled but not yet persisted)
-    private var toggledItems: [TodoItem.ID: TodoItem] = [:]
-
-    // Computed property to get displayed active todos (excluding deleted, including toggled items)
+    // Computed property to get displayed active todos
     var displayedActiveTodos: [TodoItem] {
-        var items = cachedActiveTodos.filter { !deletedItemIDs.contains($0.id) && !toggledItemIDs.contains($0.id) }
-        // Add toggled items that were active and are now marked as done (but should still display in active list)
-        for (id, item) in toggledItems {
-            if !deletedItemIDs.contains(id) && !item.isDone {
-                items.append(item)
-            }
+        // Get current active items from repository (not toggled)
+        var items = repository.activeTodos.filter { !deletedItemIDs.contains($0.id) }
+
+        // Add toggled items that are now in doneTodos but should still show in active list
+        let toggledDoneItems = repository.doneTodos.filter {
+            toggledItemIDs.contains($0.id) && !deletedItemIDs.contains($0.id)
         }
-        return items
+
+        return items + toggledDoneItems
     }
 
     // Check if an item's done state has been toggled in-memory
@@ -49,29 +44,25 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     // Get the effective done state for display (considering in-memory toggles)
     func effectiveDoneState(for item: TodoItem) -> Bool {
-        if toggledItemIDs.contains(item.id) {
-            return !item.isDone  // Flip the state
-        }
+        // Simply return the item's current isDone state from repository
+        // The item displayed in the list already reflects the repository state
         return item.isDone
     }
 
     func loadActiveTodos() {
-        // Reload from repository and clear in-memory state
-        cachedActiveTodos = repository.activeTodos
+        // Clear in-memory state
         toggledItemIDs.removeAll()
         deletedItemIDs.removeAll()
-        toggledItems.removeAll()
     }
 
     func refresh() async {
-        // Clear in-memory state and reload from repository
+        // Clear in-memory state
         loadActiveTodos()
     }
 
     init(repository: TodoRepository<S, G>, service: GitHubService?) {
         self.repository = repository
         self.service = service
-        self.cachedActiveTodos = repository.activeTodos
     }
 
     func handleToggle(_ item: TodoItem) {
@@ -80,30 +71,26 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             pendingToggleItem = item
             showStateChangeAlert = true
         } else {
-            // Toggle the in-memory state BEFORE updating repository
+            // Toggle the in-memory state
             if toggledItemIDs.contains(item.id) {
                 toggledItemIDs.remove(item.id)
-                toggledItems.removeValue(forKey: item.id)
             } else {
                 toggledItemIDs.insert(item.id)
-                toggledItems[item.id] = item  // Save item BEFORE toggling
             }
-            // Update repository after saving the original state
+            // Update repository
             repository.toggleDone(item)
         }
     }
 
     func toggleWithIssueUpdate(stateReason: String?) {
         guard let item = pendingToggleItem else { return }
-        // Toggle the in-memory state BEFORE updating repository
+        // Toggle the in-memory state
         if toggledItemIDs.contains(item.id) {
             toggledItemIDs.remove(item.id)
-            toggledItems.removeValue(forKey: item.id)
         } else {
             toggledItemIDs.insert(item.id)
-            toggledItems[item.id] = item  // Save item BEFORE toggling
         }
-        // Update repository after saving the original state
+        // Update repository
         repository.toggleDone(item)
         pendingToggleItem = nil
     }
@@ -131,15 +118,13 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     func toggleWithoutIssueUpdate() {
         guard let item = pendingToggleItem else { return }
-        // Toggle the in-memory state BEFORE updating repository
+        // Toggle the in-memory state
         if toggledItemIDs.contains(item.id) {
             toggledItemIDs.remove(item.id)
-            toggledItems.removeValue(forKey: item.id)
         } else {
             toggledItemIDs.insert(item.id)
-            toggledItems[item.id] = item  // Save item BEFORE toggling
         }
-        // Update repository after saving the original state
+        // Update repository
         repository.toggleDone(item)
         pendingToggleItem = nil
     }

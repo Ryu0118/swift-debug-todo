@@ -24,22 +24,17 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     // In-memory set to track deleted item IDs (items that should be hidden)
     private(set) var deletedItemIDs: Set<TodoItem.ID> = []
 
-    // In-memory cache of all done todos at the time of view appearance
-    private var cachedDoneTodos: [TodoItem] = []
-
-    // In-memory cache of toggled items (items that have been toggled but not yet persisted)
-    private var toggledItems: [TodoItem.ID: TodoItem] = [:]
-
-    // Computed property to get displayed done todos (excluding deleted, including toggled items)
+    // Computed property to get displayed done todos
     var displayedDoneTodos: [TodoItem] {
-        var items = cachedDoneTodos.filter { !deletedItemIDs.contains($0.id) && !toggledItemIDs.contains($0.id) }
-        // Add toggled items that were done and are now unchecked (but should still display in done list)
-        for (id, item) in toggledItems {
-            if !deletedItemIDs.contains(id) && item.isDone {
-                items.append(item)
-            }
+        // Get current done items from repository (not toggled)
+        var items = repository.doneTodos.filter { !deletedItemIDs.contains($0.id) }
+
+        // Add toggled items that are now in activeTodos but should still show in done list
+        let toggledActiveItems = repository.activeTodos.filter {
+            toggledItemIDs.contains($0.id) && !deletedItemIDs.contains($0.id)
         }
-        return items
+
+        return items + toggledActiveItems
     }
 
     // Check if an item's done state has been toggled in-memory
@@ -56,16 +51,14 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     }
 
     func loadDoneTodos() {
-        // Reload from repository and clear in-memory state
-        cachedDoneTodos = repository.doneTodos
+        // Clear in-memory state
         toggledItemIDs.removeAll()
         deletedItemIDs.removeAll()
         selectedTodoIDs.removeAll()
-        toggledItems.removeAll()
     }
 
     func refresh() async {
-        // Clear in-memory state and reload from repository
+        // Clear in-memory state
         loadDoneTodos()
     }
 
@@ -76,12 +69,11 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         self.repository = repository
         self.repositorySettings = repositorySettings
         self.service = service
-        self.cachedDoneTodos = repository.doneTodos
     }
 
     func deleteAllDoneTodos() {
         withAnimation {
-            for todo in cachedDoneTodos {
+            for todo in repository.doneTodos {
                 repository.delete(todo)
                 deletedItemIDs.insert(todo.id)
             }
@@ -90,7 +82,7 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     func deleteSelectedTodos() {
         withAnimation {
-            let todosToDelete = cachedDoneTodos.filter { selectedTodoIDs.contains($0.id) }
+            let todosToDelete = repository.doneTodos.filter { selectedTodoIDs.contains($0.id) }
             for todo in todosToDelete {
                 repository.delete(todo)
                 deletedItemIDs.insert(todo.id)
@@ -105,45 +97,39 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             pendingReopenItem = item
             showReopenAlert = true
         } else {
-            // Toggle the in-memory state BEFORE updating repository
+            // Toggle the in-memory state
             if toggledItemIDs.contains(item.id) {
                 toggledItemIDs.remove(item.id)
-                toggledItems.removeValue(forKey: item.id)
             } else {
                 toggledItemIDs.insert(item.id)
-                toggledItems[item.id] = item  // Save item BEFORE toggling
             }
-            // Update repository after saving the original state
+            // Update repository
             repository.toggleDone(item)
         }
     }
 
     func reopenWithoutIssueUpdate() {
         guard let item = pendingReopenItem else { return }
-        // Toggle the in-memory state BEFORE updating repository
+        // Toggle the in-memory state
         if toggledItemIDs.contains(item.id) {
             toggledItemIDs.remove(item.id)
-            toggledItems.removeValue(forKey: item.id)
         } else {
             toggledItemIDs.insert(item.id)
-            toggledItems[item.id] = item  // Save item BEFORE toggling
         }
-        // Update repository after saving the original state
+        // Update repository
         repository.toggleDone(item)
         pendingReopenItem = nil
     }
 
     func reopenWithIssueUpdate() {
         guard let item = pendingReopenItem else { return }
-        // Toggle the in-memory state BEFORE updating repository
+        // Toggle the in-memory state
         if toggledItemIDs.contains(item.id) {
             toggledItemIDs.remove(item.id)
-            toggledItems.removeValue(forKey: item.id)
         } else {
             toggledItemIDs.insert(item.id)
-            toggledItems[item.id] = item  // Save item BEFORE toggling
         }
-        // Update repository after saving the original state
+        // Update repository
         repository.toggleDone(item)
         pendingReopenItem = nil
     }
