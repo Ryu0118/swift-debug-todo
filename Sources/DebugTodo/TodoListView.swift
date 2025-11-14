@@ -17,6 +17,7 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     // Child models
     var addEditModel: AddEditTodoModel<S, G>?
+    var doneListModel: DoneTodoListModel<S, G>?
 
     // In-memory set to track toggled item IDs (items whose done state has changed)
     private(set) var toggledItemIDs: Set<TodoItem.ID> = []
@@ -187,11 +188,16 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     }
 
     func createDoneListModel() -> DoneTodoListModel<S, G> {
-        DoneTodoListModel(
+        if let existingModel = doneListModel {
+            return existingModel
+        }
+        let model = DoneTodoListModel(
             repository: repository,
             repositorySettings: service?.repositorySettings,
             service: service
         )
+        doneListModel = model
+        return model
     }
 
 }
