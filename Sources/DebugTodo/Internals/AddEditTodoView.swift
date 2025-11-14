@@ -1,67 +1,170 @@
 import SwiftUI
 
-struct AddEditTodoView<S: Storage>: View {
-    @Environment(\.dismiss) private var dismiss
-    let repository: TodoRepository<S>
-    @State private var title: String
-    @State private var detail: String
+@MainActor
+@Observable
+final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
+    let repository: TodoRepository<S, G>
+    let repositorySettings: GitHubRepositorySettings?
+    let service: GitHubService?
+    let editingItem: TodoItem?
 
-    private let editingItem: TodoItem?
+    var title: String
+    var detail: String
+    var showCreateIssueAlert = false
+    var errorMessage: String?
 
-    init(repository: TodoRepository<S>, editingItem: TodoItem? = nil) {
+    init(repository: TodoRepository<S, G>, repositorySettings: GitHubRepositorySettings? = nil, service: GitHubService? = nil, editingItem: TodoItem? = nil) {
         self.repository = repository
+        self.repositorySettings = repositorySettings
+        self.service = service
         self.editingItem = editingItem
-        self._title = State(initialValue: editingItem?.title ?? "")
-        self._detail = State(initialValue: editingItem?.detail ?? "")
+        self.title = editingItem?.title ?? ""
+        self.detail = editingItem?.detail ?? ""
     }
+
+    func save() -> Bool {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return false }
+
+        if let editingItem {
+            // Update existing item
+            var updatedItem = editingItem
+            updatedItem.title = trimmedTitle
+            updatedItem.detail = detail
+            repository.update(updatedItem)
+            return true
+        } else {
+            // Add new item - check if confirmation is needed
+            if let repositorySettings = repositorySettings, repositorySettings.showConfirmationAlert {
+                showCreateIssueAlert = true
+                return false
+            } else {
+                repository.add(title: trimmedTitle, detail: detail, createIssue: true)
+                return true
+            }
+        }
+    }
+
+    func updateGitHubIssue() async throws {
+        guard let editingItem = editingItem,
+              let service = service,
+              let issueNumber = editingItem.gitHubIssueNumber else {
+            return
+        }
+
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        _ = try await service.issueCreator.updateIssueContent(
+            owner: service.repositorySettings.owner,
+            repo: service.repositorySettings.repo,
+            issueNumber: issueNumber,
+            title: trimmedTitle,
+            body: detail.isEmpty ? nil : detail
+        )
+        logger.debug("Updated issue #\(issueNumber) content")
+    }
+
+    func addWithIssue() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        repository.add(title: trimmedTitle, detail: detail, createIssue: true) { [self] error in
+            self.errorMessage = error.localizedDescription
+        }
+    }
+
+    func addWithoutIssue() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        repository.add(title: trimmedTitle, detail: detail, createIssue: false)
+    }
+}
+
+struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+
+    @Bindable var model: AddEditTodoModel<S, G>
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Title") {
-                    TextField("", text: $title, axis: .vertical)
+                    TextField("", text: $model.title, axis: .vertical)
                 }
                 Section("Detail") {
-                    TextEditor(text: $detail)
+                    TextEditor(text: $model.detail)
                 }
             }
-            .navigationTitle(editingItem == nil ? "New" : "Edit")
+            .navigationTitle(model.editingItem == nil ? "New" : "Edit")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                if model.editingItem == nil {
+                    ToolbarItem(placement: .cancellationAction) {
+                        if #available(macOS 26.0, iOS 26.0, *) {
+                            Button(role: .cancel) {
+                                dismiss()
+                            }
+                        } else {
+                            Button("Cancel", role: .cancel) {
+                                dismiss()
+                            }
+                        }
+                    }
+                }
+
+                if let editingItem = model.editingItem,
+                   let issueUrl = editingItem.gitHubIssueUrl,
+                   let url = URL(string: issueUrl) {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            openURL(url)
+                        } label: {
+                            Image(systemName: "link")
+                        }
+                    }
+
                     if #available(macOS 26.0, iOS 26.0, *) {
-                        Button(role: .cancel) {
-                            dismiss()
-                        }
-                    } else {
-                        Button("Cancel", role: .cancel) {
-                            dismiss()
-                        }
+                        ToolbarSpacer()
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(editingItem == nil ? "Add" : "Save") {
-                        save()
+                    Button(model.editingItem == nil ? "Add" : "Save") {
+                        if model.save() {
+                            // Update GitHub issue if linked
+                            Task {
+                                do {
+                                    try await model.updateGitHubIssue()
+                                } catch {
+                                    logger.error("Failed to update GitHub issue: \(error)")
+                                }
+                            }
+                            dismiss()
+                        }
                     }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(model.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .alert("Create GitHub Issue?", isPresented: $model.showCreateIssueAlert) {
+                Button("Skip", role: .cancel) {
+                    model.addWithoutIssue()
+                    dismiss()
+                }
+                Button("Create Issue", role: .destructive) {
+                    model.addWithIssue()
+                    dismiss()
+                }
+            } message: {
+                Text("Do you want to create a GitHub issue for this todo?")
+            }
+            .alert("Failed to Create Issue", isPresented: Binding(
+                get: { model.errorMessage != nil },
+                set: { if !$0 { model.errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {
+                    model.errorMessage = nil
+                }
+            } message: {
+                if let errorMessage = model.errorMessage {
+                    Text(errorMessage)
                 }
             }
         }
-    }
-
-    private func save() {
-        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedTitle.isEmpty else { return }
-
-        if let editingItem {
-            var updatedItem = editingItem
-            updatedItem.title = trimmedTitle
-            updatedItem.detail = detail
-            repository.update(updatedItem)
-        } else {
-            repository.add(title: trimmedTitle, detail: detail)
-        }
-
-        dismiss()
     }
 }
