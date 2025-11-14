@@ -17,7 +17,7 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     // Child models
     var addEditModel: AddEditTodoModel<S, G>?
-    var doneListModel: DoneTodoListModel<S, G>?
+    private(set) var doneListModel: DoneTodoListModel<S, G>
 
     // In-memory set to track toggled item IDs (items whose done state has changed)
     private(set) var toggledItemIDs: Set<TodoItem.ID> = []
@@ -67,6 +67,11 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     init(repository: TodoRepository<S, G>, service: GitHubService?) {
         self.repository = repository
         self.service = service
+        self.doneListModel = DoneTodoListModel(
+            repository: repository,
+            repositorySettings: service?.repositorySettings,
+            service: service
+        )
     }
 
     func handleToggle(_ item: TodoItem) {
@@ -187,18 +192,6 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         )
     }
 
-    func createDoneListModel() -> DoneTodoListModel<S, G> {
-        if let existingModel = doneListModel {
-            return existingModel
-        }
-        let model = DoneTodoListModel(
-            repository: repository,
-            repositorySettings: service?.repositorySettings,
-            service: service
-        )
-        doneListModel = model
-        return model
-    }
 
 }
 
@@ -308,7 +301,7 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
 
             ToolbarItem(placement: .primaryAction) {
                 NavigationLink {
-                    DoneTodoListView(model: model.createDoneListModel())
+                    DoneTodoListView(model: model.doneListModel)
                 } label: {
                     Image(systemName: "checkmark.circle")
                 }

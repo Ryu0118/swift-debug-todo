@@ -226,16 +226,14 @@ struct TodoListModelTests {
         #expect(addEditModel.detail == "Detail")
     }
 
-    @Test("Create done list model")
-    func createDoneListModel() {
+    @Test("Done list model is initialized with service")
+    func doneListModelInitializedWithService() {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
         let model = TodoListModel(repository: repository, service: service)
 
-        let doneListModel = model.createDoneListModel()
-
-        #expect(doneListModel.service != nil)
+        #expect(model.doneListModel.service != nil)
     }
 
     @Test("Load active todos clears in-memory state")
