@@ -52,27 +52,32 @@ public final class GitHubService {
         repositorySettingsStorage: GitHubRepositorySettingsStorage =
             KeychainRepositorySettingsStorage()
     ) {
-        // Load repository settings from storage
-        let loadedSettings: GitHubRepositorySettings
-        do {
-            loadedSettings = try repositorySettingsStorage.load()
-        } catch {
-            loadedSettings = GitHubRepositorySettings()
-        }
-
         let credentials = GitHubCredentials(storage: tokenStorage)
+        let defaultSettings = GitHubRepositorySettings()
 
         self.credentials = credentials
-        self.repositorySettings = loadedSettings
+        self.repositorySettings = defaultSettings
         self.repositorySettingsStorage = repositorySettingsStorage
         self.issueCreator = GitHubIssueCreator(
-            repositorySettings: loadedSettings,
+            repositorySettings: defaultSettings,
             credentials: credentials
         )
+
+        // Load repository settings from storage asynchronously
+        Task {
+            do {
+                let loadedSettings = try await repositorySettingsStorage.load()
+                await MainActor.run {
+                    self.repositorySettings = loadedSettings
+                }
+            } catch {
+                // Use default settings on error
+            }
+        }
     }
 
     /// Saves the current repository settings to storage.
-    public func saveRepositorySettings() throws {
-        try repositorySettingsStorage.save(repositorySettings)
+    public func saveRepositorySettings() async throws {
+        try await repositorySettingsStorage.save(repositorySettings)
     }
 }

@@ -110,19 +110,19 @@ final class InMemoryTokenStorage: @unchecked Sendable, GitHubTokenStorage {
     private let lock = NSLock()
     private var _token: String?
 
-    func saveToken(_ token: String) throws {
+    func saveToken(_ token: String) async throws {
         lock.lock()
         defer { lock.unlock() }
         _token = token
     }
 
-    func loadToken() throws -> String? {
+    func loadToken() async throws -> String? {
         lock.lock()
         defer { lock.unlock() }
         return _token
     }
 
-    func deleteToken() throws {
+    func deleteToken() async throws {
         lock.lock()
         defer { lock.unlock() }
         _token = nil
@@ -136,13 +136,13 @@ final class InMemoryRepositorySettingsStorage: @unchecked Sendable, GitHubReposi
     private let lock = NSLock()
     private var _settings: GitHubRepositorySettings?
 
-    func save(_ settings: GitHubRepositorySettings) throws {
+    func save(_ settings: GitHubRepositorySettings) async throws {
         lock.lock()
         defer { lock.unlock() }
         _settings = settings
     }
 
-    func load() throws -> GitHubRepositorySettings {
+    func load() async throws -> GitHubRepositorySettings {
         lock.lock()
         defer { lock.unlock() }
         guard let settings = _settings else {
@@ -159,11 +159,11 @@ final class InMemoryRepositorySettingsStorage: @unchecked Sendable, GitHubReposi
 }
 
 final class FailingRepositorySettingsStorage: GitHubRepositorySettingsStorage {
-    func save(_ settings: GitHubRepositorySettings) throws {
+    func save(_ settings: GitHubRepositorySettings) async throws {
         throw SaveError.failed
     }
 
-    func load() throws -> GitHubRepositorySettings {
+    func load() async throws -> GitHubRepositorySettings {
         throw LoadError.failed
     }
 

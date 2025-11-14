@@ -13,12 +13,18 @@ public final class GitHubSettingsModel {
     }
 
     func saveConfiguration() {
-        do {
-            try service.saveRepositorySettings()
-            try service.credentials.saveToken()
-            showSuccess = true
-        } catch {
-            errorMessage = "Failed to save configuration: \(error.localizedDescription)"
+        Task {
+            do {
+                try await service.saveRepositorySettings()
+                try await service.credentials.saveToken()
+                await MainActor.run {
+                    showSuccess = true
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to save configuration: \(error.localizedDescription)"
+                }
+            }
         }
     }
 }
