@@ -19,7 +19,7 @@ public final class UserDefaultsStorage: Storage, Sendable {
     ///
     /// - Parameter items: The array of todo items to save.
     /// - Throws: An error if encoding fails.
-    public func save(_ items: [TodoItem]) throws {
+    public func save(_ items: [TodoItem]) async throws {
         let encoder = JSONEncoder()
         let data = try encoder.encode(items)
         userDefaults.set(data, forKey: key)
@@ -29,7 +29,7 @@ public final class UserDefaultsStorage: Storage, Sendable {
     ///
     /// - Returns: An array of todo items, or an empty array if no data is stored.
     /// - Throws: An error if decoding fails.
-    public func load() throws -> [TodoItem] {
+    public func load() async throws -> [TodoItem] {
         guard let data = userDefaults.data(forKey: key) else {
             return []
         }
@@ -38,7 +38,7 @@ public final class UserDefaultsStorage: Storage, Sendable {
     }
 
     /// Deletes all todo items from UserDefaults.
-    public func delete() throws {
+    public func delete() async throws {
         userDefaults.removeObject(forKey: key)
     }
 }
