@@ -18,9 +18,49 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     // Child models
     var addEditModel: AddEditTodoModel<S, G>?
 
+    // In-memory set to track toggled item IDs (items whose done state has changed)
+    private(set) var toggledItemIDs: Set<TodoItem.ID> = []
+
+    // In-memory set to track deleted item IDs (items that should be hidden)
+    private(set) var deletedItemIDs: Set<TodoItem.ID> = []
+
+    // In-memory cache of all todos at the time of view appearance
+    private var cachedActiveTodos: [TodoItem] = []
+
+    // Computed property to get displayed active todos (excluding deleted)
+    var displayedActiveTodos: [TodoItem] {
+        cachedActiveTodos.filter { !deletedItemIDs.contains($0.id) }
+    }
+
+    // Check if an item's done state has been toggled in-memory
+    func isToggledInMemory(_ item: TodoItem) -> Bool {
+        toggledItemIDs.contains(item.id)
+    }
+
+    // Get the effective done state for display (considering in-memory toggles)
+    func effectiveDoneState(for item: TodoItem) -> Bool {
+        if toggledItemIDs.contains(item.id) {
+            return !item.isDone  // Flip the state
+        }
+        return item.isDone
+    }
+
+    func loadActiveTodos() {
+        // Reload from repository and clear in-memory state
+        cachedActiveTodos = repository.activeTodos
+        toggledItemIDs.removeAll()
+        deletedItemIDs.removeAll()
+    }
+
+    func refresh() async {
+        // Clear in-memory state and reload from repository
+        loadActiveTodos()
+    }
+
     init(repository: TodoRepository<S, G>, service: GitHubService?) {
         self.repository = repository
         self.service = service
+        self.cachedActiveTodos = repository.activeTodos
     }
 
     func handleToggle(_ item: TodoItem) {
@@ -29,13 +69,17 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             pendingToggleItem = item
             showStateChangeAlert = true
         } else {
+            // Update repository immediately, but hide from view
             repository.toggleDone(item)
+            toggledItemIDs.insert(item.id)
         }
     }
 
     func toggleWithIssueUpdate(stateReason: String?) {
         guard let item = pendingToggleItem else { return }
+        // Update repository immediately, but hide from view
         repository.toggleDone(item)
+        toggledItemIDs.insert(item.id)
         pendingToggleItem = nil
     }
 
@@ -62,7 +106,9 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     func toggleWithoutIssueUpdate() {
         guard let item = pendingToggleItem else { return }
+        // Update repository immediately, but hide from view
         repository.toggleDone(item)
+        toggledItemIDs.insert(item.id)
         pendingToggleItem = nil
     }
 
@@ -72,19 +118,25 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             pendingDeleteItem = item
             showDeleteAlert = true
         } else {
+            // Update repository immediately, but hide from view
             repository.delete(item)
+            deletedItemIDs.insert(item.id)
         }
     }
 
     func deleteWithoutClosingIssue() {
         guard let item = pendingDeleteItem else { return }
+        // Update repository immediately, but hide from view
         repository.delete(item)
+        deletedItemIDs.insert(item.id)
         pendingDeleteItem = nil
     }
 
     func deleteAndCloseIssue(stateReason: String) {
         guard let item = pendingDeleteItem else { return }
+        // Update repository immediately, but hide from view
         repository.delete(item)
+        deletedItemIDs.insert(item.id)
         pendingDeleteItem = nil
     }
 
@@ -157,7 +209,7 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
 
     public var body: some View {
         Group {
-            if model.repository.activeTodos.isEmpty {
+            if model.displayedActiveTodos.isEmpty {
                 ContentUnavailableView(
                     "No Active Todos",
                     systemImage: "checklist",
@@ -165,33 +217,48 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 )
             } else {
                 List {
-                    ForEach(model.repository.activeTodos) { item in
+                    ForEach(model.displayedActiveTodos) { item in
                         NavigationLink {
                             AddEditTodoView(model: model.createAddEditModel(editingItem: item))
                         } label: {
                             TodoRowView(
                                 model: TodoRowModel(
                                     item: item,
-                                    onToggle: { model.handleToggle(item) }
+                                    onToggle: { model.handleToggle(item) },
+                                    effectiveDoneState: model.effectiveDoneState(for: item)
                                 )
                             )
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                model.handleDelete(item)
+                                withAnimation {
+                                    model.handleDelete(item)
+                                }
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .leading).combined(with: .opacity),
+                            removal: .move(edge: .trailing).combined(with: .opacity)
+                        ))
                     }
                     .onDelete { indexSet in
-                        for index in indexSet {
-                            let item = model.repository.activeTodos[index]
-                            model.handleDelete(item)
+                        withAnimation {
+                            for index in indexSet {
+                                let item = model.displayedActiveTodos[index]
+                                model.handleDelete(item)
+                            }
                         }
                     }
                 }
             }
+        }
+        .onAppear {
+            model.loadActiveTodos()
+        }
+        .refreshable {
+            await model.refresh()
         }
         .toolbar {
             #if os(iOS)

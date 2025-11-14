@@ -18,6 +18,46 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     // Child models
     var addEditModel: AddEditTodoModel<S, G>?
 
+    // In-memory set to track toggled item IDs (items whose done state has changed)
+    private(set) var toggledItemIDs: Set<TodoItem.ID> = []
+
+    // In-memory set to track deleted item IDs (items that should be hidden)
+    private(set) var deletedItemIDs: Set<TodoItem.ID> = []
+
+    // In-memory cache of all done todos at the time of view appearance
+    private var cachedDoneTodos: [TodoItem] = []
+
+    // Computed property to get displayed done todos (excluding deleted)
+    var displayedDoneTodos: [TodoItem] {
+        cachedDoneTodos.filter { !deletedItemIDs.contains($0.id) }
+    }
+
+    // Check if an item's done state has been toggled in-memory
+    func isToggledInMemory(_ item: TodoItem) -> Bool {
+        toggledItemIDs.contains(item.id)
+    }
+
+    // Get the effective done state for display (considering in-memory toggles)
+    func effectiveDoneState(for item: TodoItem) -> Bool {
+        if toggledItemIDs.contains(item.id) {
+            return !item.isDone  // Flip the state
+        }
+        return item.isDone
+    }
+
+    func loadDoneTodos() {
+        // Reload from repository and clear in-memory state
+        cachedDoneTodos = repository.doneTodos
+        toggledItemIDs.removeAll()
+        deletedItemIDs.removeAll()
+        selectedTodoIDs.removeAll()
+    }
+
+    func refresh() async {
+        // Clear in-memory state and reload from repository
+        loadDoneTodos()
+    }
+
     init(
         repository: TodoRepository<S, G>, repositorySettings: GitHubRepositorySettings? = nil,
         service: GitHubService? = nil
@@ -25,21 +65,27 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         self.repository = repository
         self.repositorySettings = repositorySettings
         self.service = service
+        self.cachedDoneTodos = repository.doneTodos
     }
 
     func deleteAllDoneTodos() {
-        let todosToDelete = repository.doneTodos
-        for todo in todosToDelete {
-            repository.delete(todo)
+        withAnimation {
+            for todo in cachedDoneTodos {
+                repository.delete(todo)
+                deletedItemIDs.insert(todo.id)
+            }
         }
     }
 
     func deleteSelectedTodos() {
-        let todosToDelete = repository.doneTodos.filter { selectedTodoIDs.contains($0.id) }
-        for todo in todosToDelete {
-            repository.delete(todo)
+        withAnimation {
+            let todosToDelete = cachedDoneTodos.filter { selectedTodoIDs.contains($0.id) }
+            for todo in todosToDelete {
+                repository.delete(todo)
+                deletedItemIDs.insert(todo.id)
+            }
+            selectedTodoIDs.removeAll()
         }
-        selectedTodoIDs.removeAll()
     }
 
     func handleReopen(_ item: TodoItem) {
@@ -48,19 +94,25 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             pendingReopenItem = item
             showReopenAlert = true
         } else {
+            // Update repository immediately, but hide from view
             repository.toggleDone(item)
+            toggledItemIDs.insert(item.id)
         }
     }
 
     func reopenWithoutIssueUpdate() {
         guard let item = pendingReopenItem else { return }
+        // Update repository immediately, but hide from view
         repository.toggleDone(item)
+        toggledItemIDs.insert(item.id)
         pendingReopenItem = nil
     }
 
     func reopenWithIssueUpdate() {
         guard let item = pendingReopenItem else { return }
+        // Update repository immediately, but hide from view
         repository.toggleDone(item)
+        toggledItemIDs.insert(item.id)
         pendingReopenItem = nil
     }
 
@@ -81,6 +133,12 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         logger.debug("Reopened issue #\(issueNumber)")
     }
 
+    func handleDelete(_ item: TodoItem) {
+        // Update repository immediately, but hide from view
+        repository.delete(item)
+        deletedItemIDs.insert(item.id)
+    }
+
     func createAddEditModel(editingItem: TodoItem) -> AddEditTodoModel<S, G> {
         AddEditTodoModel(
             repository: repository,
@@ -96,7 +154,7 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
 
     var body: some View {
         Group {
-            if model.repository.doneTodos.isEmpty {
+            if model.displayedDoneTodos.isEmpty {
                 ContentUnavailableView(
                     "No Completed Todos",
                     systemImage: "checkmark.circle",
@@ -104,7 +162,7 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 )
             } else {
                 List(selection: $model.selectedTodoIDs) {
-                    ForEach(model.repository.doneTodos) { item in
+                    ForEach(model.displayedDoneTodos) { item in
                         NavigationLink {
                             AddEditTodoView(model: model.createAddEditModel(editingItem: item))
                         } label: {
@@ -113,23 +171,41 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                                     item: item,
                                     onToggle: {
                                         model.handleReopen(item)
-                                    }
+                                    },
+                                    effectiveDoneState: model.effectiveDoneState(for: item)
                                 )
                             )
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                model.repository.delete(item)
+                                withAnimation {
+                                    model.handleDelete(item)
+                                }
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .leading).combined(with: .opacity),
+                            removal: .move(edge: .trailing).combined(with: .opacity)
+                        ))
                     }
                     .onDelete { indexSet in
-                        model.repository.delete(at: indexSet, from: model.repository.doneTodos)
+                        withAnimation {
+                            for index in indexSet {
+                                let item = model.displayedDoneTodos[index]
+                                model.handleDelete(item)
+                            }
+                        }
                     }
                 }
             }
+        }
+        .onAppear {
+            model.loadDoneTodos()
+        }
+        .refreshable {
+            await model.refresh()
         }
         .navigationTitle("Done")
         #if os(iOS)
@@ -147,7 +223,7 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                         } label: {
                             Label("Delete All", systemImage: "trash")
                         }
-                        .disabled(model.repository.doneTodos.isEmpty)
+                        .disabled(model.displayedDoneTodos.isEmpty)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {

@@ -57,6 +57,7 @@ struct DoneTodoListModelTests {
             repository.toggleDone(todo)
         }
 
+        model.loadDoneTodos()  // Load into cache
         #expect(repository.doneTodos.count == 3)
 
         model.deleteAllDoneTodos()
@@ -79,7 +80,8 @@ struct DoneTodoListModelTests {
             repository.toggleDone(todo)
         }
 
-        let doneTodos = repository.doneTodos
+        model.loadDoneTodos()  // Load into cache
+        let doneTodos = model.displayedDoneTodos
         model.selectedTodoIDs = Set([doneTodos[0].id, doneTodos[2].id])
 
         model.deleteSelectedTodos()
@@ -99,12 +101,18 @@ struct DoneTodoListModelTests {
         let item = repository.activeTodos.first!
         repository.toggleDone(item)
 
-        let doneItem = repository.doneTodos.first!
+        model.loadDoneTodos()  // Load into cache
+        let doneItem = model.displayedDoneTodos.first!
         model.handleReopen(doneItem)
 
         #expect(model.showReopenAlert == false)
         #expect(repository.activeTodos.count == 1)
         #expect(repository.doneTodos.isEmpty)
+        // Item should be tracked as toggled in-memory
+        #expect(model.toggledItemIDs.contains(doneItem.id))
+        // Item should still appear in displayed list with toggled state
+        #expect(model.displayedDoneTodos.count == 1)
+        #expect(model.effectiveDoneState(for: doneItem) == false)
     }
 
     @Test("Handle reopen with GitHub issue shows alert")
@@ -260,6 +268,7 @@ struct DoneTodoListModelTests {
         repository.add(title: "Done 1", detail: "", createIssue: false)
         repository.toggleDone(repository.activeTodos.last!)
 
+        model.loadDoneTodos()  // Load into cache
         #expect(repository.activeTodos.count == 2)
         #expect(repository.doneTodos.count == 1)
 
@@ -267,5 +276,78 @@ struct DoneTodoListModelTests {
 
         #expect(repository.activeTodos.count == 2)
         #expect(repository.doneTodos.isEmpty)
+    }
+
+    @Test("Load done todos clears in-memory state")
+    func loadDoneTodosClearsInMemoryState() {
+        let storage = InMemoryStorage()
+        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+        let model = DoneTodoListModel(repository: repository)
+
+        repository.add(title: "Test", detail: "", createIssue: false)
+        let item = repository.activeTodos.first!
+        repository.toggleDone(item)
+
+        let doneItem = repository.doneTodos.first!
+        model.handleReopen(doneItem)
+        #expect(model.toggledItemIDs.contains(doneItem.id))
+
+        model.loadDoneTodos()
+        #expect(model.toggledItemIDs.isEmpty)
+        #expect(model.displayedDoneTodos.isEmpty)
+    }
+
+    @Test("Refresh clears in-memory state")
+    func refreshClearsInMemoryState() async {
+        let storage = InMemoryStorage()
+        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+        let model = DoneTodoListModel(repository: repository)
+
+        repository.add(title: "Test", detail: "", createIssue: false)
+        let item = repository.activeTodos.first!
+        repository.toggleDone(item)
+
+        let doneItem = repository.doneTodos.first!
+        model.handleReopen(doneItem)
+        #expect(model.toggledItemIDs.contains(doneItem.id))
+
+        await model.refresh()
+        #expect(model.toggledItemIDs.isEmpty)
+        #expect(model.displayedDoneTodos.isEmpty)
+    }
+
+    @Test("Effective done state reflects in-memory toggle")
+    func effectiveDoneStateReflectsInMemoryToggle() {
+        let storage = InMemoryStorage()
+        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+        let model = DoneTodoListModel(repository: repository)
+
+        repository.add(title: "Test", detail: "", createIssue: false)
+        let item = repository.activeTodos.first!
+        repository.toggleDone(item)
+
+        let doneItem = repository.doneTodos.first!
+        #expect(model.effectiveDoneState(for: doneItem) == true)
+
+        model.handleReopen(doneItem)
+        #expect(model.effectiveDoneState(for: doneItem) == false)
+    }
+
+    @Test("Handle delete hides item from display")
+    func handleDeleteHidesItemFromDisplay() {
+        let storage = InMemoryStorage()
+        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+        let model = DoneTodoListModel(repository: repository)
+
+        repository.add(title: "Test", detail: "", createIssue: false)
+        let item = repository.activeTodos.first!
+        repository.toggleDone(item)
+
+        let doneItem = repository.doneTodos.first!
+        model.handleDelete(doneItem)
+
+        #expect(repository.doneTodos.isEmpty)
+        #expect(model.deletedItemIDs.contains(doneItem.id))
+        #expect(model.displayedDoneTodos.isEmpty)
     }
 }
