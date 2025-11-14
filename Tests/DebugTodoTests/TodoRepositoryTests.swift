@@ -95,13 +95,20 @@ struct TodoRepositoryTests {
     }
 
     @Test("Persistence with storage")
-    func persistence() throws {
+    func persistence() async throws {
         let storage = InMemoryStorage()
         let repository1 = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
         repository1.add(title: "Persistent", detail: "Should persist")
 
+        // Wait for the save to complete
+        try await Task.sleep(for: .milliseconds(100))
+
         let repository2 = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
+
+        // Wait for the load to complete
+        try await Task.sleep(for: .milliseconds(100))
+
         #expect(repository2.items.count == 1)
         #expect(repository2.items[0].title == "Persistent")
     }

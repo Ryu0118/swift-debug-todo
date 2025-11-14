@@ -14,7 +14,7 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
     init(storage: S, issueCreator: G) {
         self.storage = storage
         self.issueCreator = issueCreator
-        loadItems()
+        Task { await loadItems() }
     }
 
     var activeTodos: [TodoItem] {
@@ -33,7 +33,7 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
     ) {
         let item = TodoItem(title: title, detail: detail)
         items.append(item)
-        saveItems()
+        Task { await saveItems() }
 
         // Trigger GitHub issue creation if enabled
         if createIssue {
@@ -84,7 +84,7 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
             return
         }
         items[index].gitHubIssueUrl = url
-        saveItems()
+        Task { await saveItems() }
     }
 
     func update(_ item: TodoItem) {
@@ -94,18 +94,18 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
         var updatedItem = item
         updatedItem.updatedAt = Date()
         items[index] = updatedItem
-        saveItems()
+        Task { await saveItems() }
     }
 
     func delete(_ item: TodoItem) {
         items.removeAll { $0.id == item.id }
-        saveItems()
+        Task { await saveItems() }
     }
 
     func delete(at offsets: IndexSet, from todos: [TodoItem]) {
         let idsToDelete = offsets.map { todos[$0].id }
         items.removeAll { idsToDelete.contains($0.id) }
-        saveItems()
+        Task { await saveItems() }
     }
 
     func toggleDone(_ item: TodoItem) {
@@ -114,21 +114,21 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
         }
         items[index].isDone.toggle()
         items[index].updatedAt = Date()
-        saveItems()
+        Task { await saveItems() }
     }
 
-    private func loadItems() {
+    private func loadItems() async {
         do {
-            items = try storage.load()
+            items = try await storage.load()
         } catch {
             logger.error("Failed to load items", metadata: ["error": "\(error)"])
             items = []
         }
     }
 
-    private func saveItems() {
+    private func saveItems() async {
         do {
-            try storage.save(items)
+            try await storage.save(items)
         } catch {
             logger.error("Failed to save items", metadata: ["error": "\(error)"])
         }

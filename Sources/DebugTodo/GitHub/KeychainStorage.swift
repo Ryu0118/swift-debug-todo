@@ -14,7 +14,7 @@ public struct KeychainStorage: Sendable {
     /// - Parameters:
     ///   - value: The string value to save.
     ///   - key: The key to associate with the value.
-    public func save(_ value: String, forKey key: String) throws {
+    public func save(_ value: String, forKey key: String) async throws {
         guard let data = value.data(using: .utf8) else {
             throw KeychainError.encodingFailed
         }
@@ -40,7 +40,7 @@ public struct KeychainStorage: Sendable {
     ///
     /// - Parameter key: The key associated with the value.
     /// - Returns: The string value, or nil if not found.
-    public func load(forKey key: String) throws -> String? {
+    public func load(forKey key: String) async throws -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -72,7 +72,7 @@ public struct KeychainStorage: Sendable {
     /// Deletes a value from the Keychain.
     ///
     /// - Parameter key: The key associated with the value.
-    public func delete(forKey key: String) throws {
+    public func delete(forKey key: String) async throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -86,7 +86,7 @@ public struct KeychainStorage: Sendable {
     }
 
     /// Deletes all values for this service from the Keychain.
-    public func deleteAll() throws {
+    public func deleteAll() async throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
