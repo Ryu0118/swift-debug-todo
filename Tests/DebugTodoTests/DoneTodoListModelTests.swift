@@ -14,7 +14,6 @@ struct DoneTodoListModelTests {
         let model = DoneTodoListModel(repository: repository)
 
         #expect(model.showDeleteAllAlert == false)
-        #expect(model.selectedTodoIDs.isEmpty)
         #expect(model.showReopenAlert == false)
         #expect(model.pendingReopenItem == nil)
     }
@@ -48,9 +47,9 @@ struct DoneTodoListModelTests {
         let model = DoneTodoListModel(repository: repository)
 
         // Add some done todos
-        repository.add(title: "Todo 1", detail: "", createIssue: false)
-        repository.add(title: "Todo 2", detail: "", createIssue: false)
-        repository.add(title: "Todo 3", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Todo 1", detail: "")
+        repository.addWithoutIssue(title: "Todo 2", detail: "")
+        repository.addWithoutIssue(title: "Todo 3", detail: "")
 
         // Mark them as done
         for todo in repository.activeTodos {
@@ -65,31 +64,6 @@ struct DoneTodoListModelTests {
         #expect(repository.doneTodos.isEmpty)
     }
 
-    @Test("Delete selected todos")
-    func deleteSelectedTodos() {
-        let storage = InMemoryStorage()
-        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
-        let model = DoneTodoListModel(repository: repository)
-
-        // Add and mark as done
-        repository.add(title: "Todo 1", detail: "", createIssue: false)
-        repository.add(title: "Todo 2", detail: "", createIssue: false)
-        repository.add(title: "Todo 3", detail: "", createIssue: false)
-
-        for todo in repository.activeTodos {
-            repository.toggleDone(todo)
-        }
-
-        model.loadDoneTodos()  // Load into cache
-        let doneTodos = model.displayedDoneTodos
-        model.selectedTodoIDs = Set([doneTodos[0].id, doneTodos[2].id])
-
-        model.deleteSelectedTodos()
-
-        #expect(repository.doneTodos.count == 1)
-        #expect(repository.doneTodos.first?.title == "Todo 2")
-        #expect(model.selectedTodoIDs.isEmpty)
-    }
 
     @Test("Handle reopen without GitHub issue")
     func handleReopenWithoutGitHubIssue() {
@@ -97,7 +71,7 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.toggleDone(item)
 
@@ -123,7 +97,7 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         repository.toggleDone(item)
@@ -142,7 +116,7 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         repository.toggleDone(item)
@@ -162,7 +136,7 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         repository.toggleDone(item)
@@ -176,25 +150,6 @@ struct DoneTodoListModelTests {
         #expect(repository.doneTodos.isEmpty)
     }
 
-    @Test("Selected todo IDs can be modified")
-    func selectedTodoIDsCanBeModified() {
-        let repository = TodoRepository(
-            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
-        let model = DoneTodoListModel(repository: repository)
-
-        let id1 = UUID()
-        let id2 = UUID()
-
-        model.selectedTodoIDs.insert(id1)
-        model.selectedTodoIDs.insert(id2)
-
-        #expect(model.selectedTodoIDs.count == 2)
-        #expect(model.selectedTodoIDs.contains(id1))
-        #expect(model.selectedTodoIDs.contains(id2))
-
-        model.selectedTodoIDs.removeAll()
-        #expect(model.selectedTodoIDs.isEmpty)
-    }
 
     @Test("Show delete all alert flag can be toggled")
     func showDeleteAllAlertCanBeToggled() {
@@ -229,7 +184,7 @@ struct DoneTodoListModelTests {
         let service = GitHubService()
         let model = DoneTodoListModel(repository: repository, service: service)
 
-        repository.add(title: "Test", detail: "Detail", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "Detail")
         repository.toggleDone(repository.activeTodos.first!)
         let doneItem = repository.doneTodos.first!
 
@@ -263,11 +218,11 @@ struct DoneTodoListModelTests {
         let model = DoneTodoListModel(repository: repository)
 
         // Add active todos
-        repository.add(title: "Active 1", detail: "", createIssue: false)
-        repository.add(title: "Active 2", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Active 1", detail: "")
+        repository.addWithoutIssue(title: "Active 2", detail: "")
 
         // Add done todos
-        repository.add(title: "Done 1", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Done 1", detail: "")
         repository.toggleDone(repository.activeTodos.last!)
 
         model.loadDoneTodos()  // Load into cache
@@ -286,7 +241,7 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.toggleDone(item)
 
@@ -305,7 +260,7 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.toggleDone(item)
 
@@ -324,7 +279,7 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.toggleDone(item)
 
@@ -342,7 +297,7 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.toggleDone(item)
 
@@ -361,7 +316,7 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.toggleDone(item)
 
@@ -393,7 +348,7 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.toggleDone(item)
 
@@ -427,9 +382,9 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
 
         // Add items and mark them as done through repository
-        repository.add(title: "First", detail: "", createIssue: false)
-        repository.add(title: "Second", detail: "", createIssue: false)
-        repository.add(title: "Third", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "First", detail: "")
+        repository.addWithoutIssue(title: "Second", detail: "")
+        repository.addWithoutIssue(title: "Third", detail: "")
 
         // Mark all as done
         for item in repository.activeTodos {
@@ -470,7 +425,7 @@ struct DoneTodoListModelTests {
         let model = DoneTodoListModel(repository: repository)
 
         // Add one done item
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.toggleDone(item)
 

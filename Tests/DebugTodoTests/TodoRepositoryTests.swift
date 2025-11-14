@@ -11,7 +11,7 @@ struct TodoRepositoryTests {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Test Todo", detail: "Test Detail")
+        repository.addWithoutIssue(title: "Test Todo", detail: "Test Detail")
 
         #expect(repository.items.count == 1)
         #expect(repository.items[0].title == "Test Todo")
@@ -24,7 +24,7 @@ struct TodoRepositoryTests {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Original", detail: "Original detail")
+        repository.addWithoutIssue(title: "Original", detail: "Original detail")
         var item = repository.items[0]
         item.title = "Updated"
         item.detail = "Updated detail"
@@ -40,7 +40,7 @@ struct TodoRepositoryTests {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "To Delete", detail: "")
+        repository.addWithoutIssue(title: "To Delete", detail: "")
         let item = repository.items[0]
 
         repository.delete(item)
@@ -53,7 +53,7 @@ struct TodoRepositoryTests {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Toggle Test", detail: "")
+        repository.addWithoutIssue(title: "Toggle Test", detail: "")
         let item = repository.items[0]
 
         repository.toggleDone(item)
@@ -68,9 +68,9 @@ struct TodoRepositoryTests {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Active 1", detail: "")
-        repository.add(title: "Active 2", detail: "")
-        repository.add(title: "Done 1", detail: "")
+        repository.addWithoutIssue(title: "Active 1", detail: "")
+        repository.addWithoutIssue(title: "Active 2", detail: "")
+        repository.addWithoutIssue(title: "Done 1", detail: "")
 
         repository.toggleDone(repository.items[2])
 
@@ -83,9 +83,9 @@ struct TodoRepositoryTests {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Active 1", detail: "")
-        repository.add(title: "Done 1", detail: "")
-        repository.add(title: "Done 2", detail: "")
+        repository.addWithoutIssue(title: "Active 1", detail: "")
+        repository.addWithoutIssue(title: "Done 1", detail: "")
+        repository.addWithoutIssue(title: "Done 2", detail: "")
 
         repository.toggleDone(repository.items[1])
         repository.toggleDone(repository.items[2])
@@ -99,7 +99,7 @@ struct TodoRepositoryTests {
         let storage = InMemoryStorage()
         let repository1 = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository1.add(title: "Persistent", detail: "Should persist")
+        repository1.addWithoutIssue(title: "Persistent", detail: "Should persist")
 
         let repository2 = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
         #expect(repository2.items.count == 1)
@@ -111,9 +111,9 @@ struct TodoRepositoryTests {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Item 1", detail: "")
-        repository.add(title: "Item 2", detail: "")
-        repository.add(title: "Item 3", detail: "")
+        repository.addWithoutIssue(title: "Item 1", detail: "")
+        repository.addWithoutIssue(title: "Item 2", detail: "")
+        repository.addWithoutIssue(title: "Item 3", detail: "")
 
         let activeTodos = repository.activeTodos
         repository.delete(at: IndexSet(integer: 1), from: activeTodos)

@@ -25,7 +25,7 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         self.detail = editingItem?.detail ?? ""
     }
 
-    func save() -> Bool {
+    func save() async -> Bool {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return false }
 
@@ -43,8 +43,13 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
                 showCreateIssueAlert = true
                 return false
             } else {
-                repository.add(title: trimmedTitle, detail: detail, createIssue: true)
-                return true
+                do {
+                    try await repository.add(title: trimmedTitle, detail: detail, createIssue: true)
+                    return true
+                } catch {
+                    errorMessage = error.localizedDescription
+                    return false
+                }
             }
         }
     }
@@ -84,24 +89,23 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             errorMessage = "GitHub repository is not configured"
             return
         }
-        if settings.personalAccessToken.isEmpty {
+        if service.credentials.personalAccessToken.isEmpty {
             errorMessage = "GitHub Personal Access Token is not configured"
             return
         }
 
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        return await withCheckedContinuation { continuation in
-            repository.add(title: trimmedTitle, detail: detail, createIssue: true) { [self] error in
-                self.errorMessage = error.localizedDescription
-                continuation.resume()
-            }
+        do {
+            try await repository.add(title: trimmedTitle, detail: detail, createIssue: true)
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
     func addWithoutIssue() {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        repository.add(title: trimmedTitle, detail: detail, createIssue: false)
+        repository.addWithoutIssue(title: trimmedTitle, detail: detail)
     }
 }
 
@@ -156,16 +160,16 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button(model.editingItem == nil ? "Add" : "Save") {
-                        if model.save() {
-                            // Update GitHub issue if linked
-                            Task {
+                        Task {
+                            if await model.save() {
+                                // Update GitHub issue if linked
                                 do {
                                     try await model.updateGitHubIssue()
                                 } catch {
                                     logger.error("Failed to update GitHub issue: \(error)")
                                 }
+                                dismiss()
                             }
-                            dismiss()
                         }
                     }
                     .disabled(model.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

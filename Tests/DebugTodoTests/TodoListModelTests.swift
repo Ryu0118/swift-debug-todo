@@ -37,7 +37,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         model.loadActiveTodos()  // Load the todo into cache
         let item = model.displayedActiveTodos.first!
 
@@ -61,7 +61,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
@@ -79,7 +79,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
@@ -97,7 +97,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
@@ -115,7 +115,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
 
         model.handleDelete(item)
@@ -130,7 +130,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
@@ -148,7 +148,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         repository.toggleDone(item)
@@ -166,7 +166,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
@@ -184,7 +184,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
         repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
@@ -216,7 +216,7 @@ struct TodoListModelTests {
         let service = GitHubService()
         let model = TodoListModel(repository: repository, service: service)
 
-        repository.add(title: "Test", detail: "Detail", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "Detail")
         let item = repository.activeTodos.first!
 
         let addEditModel = model.createAddEditModel(editingItem: item)
@@ -242,7 +242,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
 
         model.handleToggle(item)
@@ -259,7 +259,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
 
         model.handleToggle(item)
@@ -276,7 +276,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
 
         #expect(model.effectiveDoneState(for: item) == false)
@@ -292,7 +292,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         model.loadActiveTodos()
         let item = model.displayedActiveTodos.first!
 
@@ -309,7 +309,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         model.loadActiveTodos()
         let item = model.displayedActiveTodos.first!
 
@@ -338,7 +338,7 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.add(title: "Test", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "Test", detail: "")
         model.loadActiveTodos()
         let item = model.displayedActiveTodos.first!
         let itemId = item.id
@@ -369,9 +369,9 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
 
         // Add items through repository to ensure proper initialization
-        repository.add(title: "First", detail: "", createIssue: false)
-        repository.add(title: "Second", detail: "", createIssue: false)
-        repository.add(title: "Third", detail: "", createIssue: false)
+        repository.addWithoutIssue(title: "First", detail: "")
+        repository.addWithoutIssue(title: "Second", detail: "")
+        repository.addWithoutIssue(title: "Third", detail: "")
 
         let model = TodoListModel(repository: repository, service: nil)
 

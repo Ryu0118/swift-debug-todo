@@ -28,31 +28,37 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
     }
 
     func add(
-        title: String, detail: String = "", createIssue: Bool = true,
-        onIssueCreationError: ((Error) -> Void)? = nil
-    ) {
+        title: String, detail: String = "", createIssue: Bool = true
+    ) async throws {
         let item = TodoItem(title: title, detail: detail)
         items.append(item)
         saveItems()
 
         // Trigger GitHub issue creation if enabled
         if createIssue {
-            Task {
-                do {
-                    let issue = try await issueCreator.onTodoCreated(item)
-                    lastCreatedIssue = issue
-                    if let issue = issue {
-                        updateGitHubIssueUrl(for: item.id, url: issue.htmlUrl)
-                    }
-                } catch {
-                    lastError = error
-                    logger.error("Failed to create GitHub issue", metadata: ["error": "\(error)"])
-                    await MainActor.run {
-                        onIssueCreationError?(error)
-                    }
+            do {
+                let issue = try await issueCreator.onTodoCreated(item)
+                lastCreatedIssue = issue
+                if let issue = issue {
+                    updateGitHubIssueUrl(for: item.id, url: issue.htmlUrl)
                 }
+            } catch {
+                lastError = error
+                logger.error("Failed to create GitHub issue", metadata: ["error": "\(error)"])
+                throw error
             }
         }
+    }
+
+    /// Adds a new todo item without creating a GitHub issue.
+    ///
+    /// - Parameters:
+    ///   - title: The title of the todo.
+    ///   - detail: Optional detail text.
+    func addWithoutIssue(title: String, detail: String = "") {
+        let item = TodoItem(title: title, detail: detail)
+        items.append(item)
+        saveItems()
     }
 
     /// Manually creates a GitHub issue for the given todo item.
