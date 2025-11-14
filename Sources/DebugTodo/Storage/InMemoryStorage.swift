@@ -1,9 +1,8 @@
 import Foundation
-import os
 
 /// A storage implementation that keeps todo items in memory.
-public final class InMemoryStorage: Storage, Sendable {
-    private let items = OSAllocatedUnfairLock<[TodoItem]>(initialState: [])
+public actor InMemoryStorage: Storage {
+    private var items: [TodoItem] = []
 
     /// Creates a new in-memory storage instance.
     public init() {}
@@ -12,18 +11,18 @@ public final class InMemoryStorage: Storage, Sendable {
     ///
     /// - Parameter items: The array of todo items to save.
     public func save(_ items: [TodoItem]) async throws {
-        self.items.withLock { $0 = items }
+        self.items = items
     }
 
     /// Loads todo items from memory.
     ///
     /// - Returns: An array of todo items currently in memory.
     public func load() async throws -> [TodoItem] {
-        items.withLock { $0 }
+        items
     }
 
     /// Deletes all todo items from memory.
     public func delete() async throws {
-        items.withLock { $0.removeAll() }
+        items.removeAll()
     }
 }

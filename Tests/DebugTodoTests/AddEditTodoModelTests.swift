@@ -156,14 +156,14 @@ struct AddEditTodoModelTests {
     }
 
     @Test("Add without issue creates todo")
-    func addWithoutIssue() {
+    func addWithoutIssue() async {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = "New Todo"
         model.detail = "Details"
-        model.addWithoutIssue()
+        await model.addWithoutIssue()
 
         #expect(repository.activeTodos.count == 1)
         #expect(repository.activeTodos.first?.title == "New Todo")

@@ -34,7 +34,7 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             var updatedItem = editingItem
             updatedItem.title = trimmedTitle
             updatedItem.detail = detail
-            repository.update(updatedItem)
+            await repository.update(updatedItem)
             return true
         } else {
             // Add new item - check if confirmation is needed
@@ -103,9 +103,9 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         }
     }
 
-    func addWithoutIssue() {
+    func addWithoutIssue() async {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        repository.addWithoutIssue(title: trimmedTitle, detail: detail)
+        await repository.addWithoutIssue(title: trimmedTitle, detail: detail)
     }
 }
 
@@ -177,8 +177,10 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
             }
             .alert("Create GitHub Issue?", isPresented: $model.showCreateIssueAlert) {
                 Button("Skip", role: .cancel) {
-                    model.addWithoutIssue()
-                    dismiss()
+                    Task {
+                        await model.addWithoutIssue()
+                        dismiss()
+                    }
                 }
                 Button("Create Issue", role: .destructive) {
                     Task {

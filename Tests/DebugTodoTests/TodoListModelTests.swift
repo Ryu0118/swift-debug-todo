@@ -32,16 +32,16 @@ struct TodoListModelTests {
     }
 
     @Test("Handle toggle without GitHub issue")
-    func handleToggleWithoutGitHubIssue() {
+    func handleToggleWithoutGitHubIssue() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
-        model.loadActiveTodos()  // Load the todo into cache
+        await repository.addWithoutIssue(title: "Test", detail: "")
+        await model.loadActiveTodos()  // Load the todo into cache
         let item = model.displayedActiveTodos.first!
 
-        model.handleToggle(item)
+        await model.handleToggle(item)
 
         #expect(model.showStateChangeAlert == false)
         #expect(repository.doneTodos.count == 1)
@@ -56,17 +56,17 @@ struct TodoListModelTests {
     }
 
     @Test("Handle toggle with GitHub issue shows alert")
-    func handleToggleWithGitHubIssueShowsAlert() {
+    func handleToggleWithGitHubIssueShowsAlert() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
-        model.handleToggle(updatedItem)
+        await model.handleToggle(updatedItem)
 
         #expect(model.showStateChangeAlert == true)
         #expect(model.pendingToggleItem?.id == item.id)
@@ -74,68 +74,68 @@ struct TodoListModelTests {
     }
 
     @Test("Toggle with issue update completes toggle")
-    func toggleWithIssueUpdate() {
+    func toggleWithIssueUpdate() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
         model.pendingToggleItem = updatedItem
-        model.toggleWithIssueUpdate(stateReason: "completed")
+        await model.toggleWithIssueUpdate(stateReason: "completed")
 
         #expect(model.pendingToggleItem == nil)
         #expect(repository.doneTodos.count == 1)
     }
 
     @Test("Toggle without issue update completes toggle")
-    func toggleWithoutIssueUpdate() {
+    func toggleWithoutIssueUpdate() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
         model.pendingToggleItem = updatedItem
-        model.toggleWithoutIssueUpdate()
+        await model.toggleWithoutIssueUpdate()
 
         #expect(model.pendingToggleItem == nil)
         #expect(repository.doneTodos.count == 1)
     }
 
     @Test("Handle delete without GitHub issue")
-    func handleDeleteWithoutGitHubIssue() {
+    func handleDeleteWithoutGitHubIssue() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
 
-        model.handleDelete(item)
+        await model.handleDelete(item)
 
         #expect(model.showDeleteAlert == false)
         #expect(repository.activeTodos.isEmpty)
     }
 
     @Test("Handle delete with GitHub issue shows alert")
-    func handleDeleteWithGitHubIssueShowsAlert() {
+    func handleDeleteWithGitHubIssueShowsAlert() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
-        model.handleDelete(updatedItem)
+        await model.handleDelete(updatedItem)
 
         #expect(model.showDeleteAlert == true)
         #expect(model.pendingDeleteItem?.id == item.id)
@@ -143,54 +143,54 @@ struct TodoListModelTests {
     }
 
     @Test("Handle delete with done item does not show alert")
-    func handleDeleteWithDoneItemDoesNotShowAlert() {
+    func handleDeleteWithDoneItemDoesNotShowAlert() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
-        repository.toggleDone(item)
+        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.toggleDone(item)
         let doneItem = repository.doneTodos.first!
 
-        model.handleDelete(doneItem)
+        await model.handleDelete(doneItem)
 
         #expect(model.showDeleteAlert == false)
         #expect(repository.doneTodos.isEmpty)
     }
 
     @Test("Delete without closing issue")
-    func deleteWithoutClosingIssue() {
+    func deleteWithoutClosingIssue() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
         model.pendingDeleteItem = updatedItem
-        model.deleteWithoutClosingIssue()
+        await model.deleteWithoutClosingIssue()
 
         #expect(model.pendingDeleteItem == nil)
         #expect(repository.activeTodos.isEmpty)
     }
 
     @Test("Delete and close issue")
-    func deleteAndCloseIssue() {
+    func deleteAndCloseIssue() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
         model.pendingDeleteItem = updatedItem
-        model.deleteAndCloseIssue(stateReason: "completed")
+        await model.deleteAndCloseIssue(stateReason: "completed")
 
         #expect(model.pendingDeleteItem == nil)
         #expect(repository.activeTodos.isEmpty)
@@ -210,13 +210,13 @@ struct TodoListModelTests {
     }
 
     @Test("Create add edit model with editing item")
-    func createAddEditModelWithEditingItem() {
+    func createAddEditModelWithEditingItem() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
         let model = TodoListModel(repository: repository, service: service)
 
-        repository.addWithoutIssue(title: "Test", detail: "Detail")
+        await repository.addWithoutIssue(title: "Test", detail: "Detail")
         let item = repository.activeTodos.first!
 
         let addEditModel = model.createAddEditModel(editingItem: item)
@@ -237,18 +237,18 @@ struct TodoListModelTests {
     }
 
     @Test("Load active todos clears in-memory state")
-    func loadActiveTodosClearsInMemoryState() {
+    func loadActiveTodosClearsInMemoryState() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
 
-        model.handleToggle(item)
+        await model.handleToggle(item)
         #expect(model.toggledItemIDs.contains(item.id))
 
-        model.loadActiveTodos()
+        await model.loadActiveTodos()
         #expect(model.toggledItemIDs.isEmpty)
         #expect(model.displayedActiveTodos.isEmpty)
     }
@@ -259,10 +259,10 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
 
-        model.handleToggle(item)
+        await model.handleToggle(item)
         #expect(model.toggledItemIDs.contains(item.id))
 
         await model.refresh()
@@ -271,32 +271,32 @@ struct TodoListModelTests {
     }
 
     @Test("Effective done state reflects in-memory toggle")
-    func effectiveDoneStateReflectsInMemoryToggle() {
+    func effectiveDoneStateReflectsInMemoryToggle() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
+        await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
 
         #expect(model.effectiveDoneState(for: item) == false)
 
-        model.handleToggle(item)
+        await model.handleToggle(item)
         let displayedItem = model.displayedActiveTodos.first!
         #expect(model.effectiveDoneState(for: displayedItem) == true)
     }
 
     @Test("Handle delete hides item from display")
-    func handleDeleteHidesItemFromDisplay() {
+    func handleDeleteHidesItemFromDisplay() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
-        model.loadActiveTodos()
+        await repository.addWithoutIssue(title: "Test", detail: "")
+        await model.loadActiveTodos()
         let item = model.displayedActiveTodos.first!
 
-        model.handleDelete(item)
+        await model.handleDelete(item)
 
         #expect(repository.activeTodos.isEmpty)
         #expect(model.deletedItemIDs.contains(item.id))
@@ -304,20 +304,20 @@ struct TodoListModelTests {
     }
 
     @Test("Toggled item remains visible in active list with checked state")
-    func toggledItemRemainsVisibleInActiveList() {
+    func toggledItemRemainsVisibleInActiveList() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
-        model.loadActiveTodos()
+        await repository.addWithoutIssue(title: "Test", detail: "")
+        await model.loadActiveTodos()
         let item = model.displayedActiveTodos.first!
 
         #expect(item.isDone == false)
         #expect(model.effectiveDoneState(for: item) == false)
 
         // Toggle the item
-        model.handleToggle(item)
+        await model.handleToggle(item)
 
         // Item should still be in displayed list
         #expect(model.displayedActiveTodos.count == 1)
@@ -333,18 +333,18 @@ struct TodoListModelTests {
     }
 
     @Test("Multiple toggles on same item work correctly")
-    func multipleTogglesOnSameItem() {
+    func multipleTogglesOnSameItem() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
-        repository.addWithoutIssue(title: "Test", detail: "")
-        model.loadActiveTodos()
+        await repository.addWithoutIssue(title: "Test", detail: "")
+        await model.loadActiveTodos()
         let item = model.displayedActiveTodos.first!
         let itemId = item.id
 
         // First toggle: active -> done
-        model.handleToggle(item)
+        await model.handleToggle(item)
         #expect(model.displayedActiveTodos.count == 1)
         // Get the displayed item (which should still be showing)
         let displayedItem1 = model.displayedActiveTodos.first!
@@ -354,7 +354,7 @@ struct TodoListModelTests {
         #expect(repository.doneTodos.count == 1)
 
         // Second toggle: done -> active (toggle the displayed item)
-        model.handleToggle(displayedItem1)
+        await model.handleToggle(displayedItem1)
         #expect(model.displayedActiveTodos.count == 1)
         let displayedItem2 = model.displayedActiveTodos.first!
         #expect(displayedItem2.id == itemId)
@@ -369,13 +369,13 @@ struct TodoListModelTests {
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
 
         // Add items through repository to ensure proper initialization
-        repository.addWithoutIssue(title: "First", detail: "")
-        repository.addWithoutIssue(title: "Second", detail: "")
-        repository.addWithoutIssue(title: "Third", detail: "")
+        await repository.addWithoutIssue(title: "First", detail: "")
+        await repository.addWithoutIssue(title: "Second", detail: "")
+        await repository.addWithoutIssue(title: "Third", detail: "")
 
         let model = TodoListModel(repository: repository, service: nil)
 
-        model.loadActiveTodos()
+        await model.loadActiveTodos()
         let items = model.displayedActiveTodos
 
         // Verify initial order (newest first based on createdAt)
@@ -386,7 +386,7 @@ struct TodoListModelTests {
 
         // Toggle the middle item (Second)
         let secondItem = items[1]
-        model.handleToggle(secondItem)
+        await model.handleToggle(secondItem)
 
         let displayedAfterToggle = model.displayedActiveTodos
         #expect(displayedAfterToggle.count == 3)
