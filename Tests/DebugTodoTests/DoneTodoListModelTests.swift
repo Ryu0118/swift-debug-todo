@@ -460,4 +460,32 @@ struct DoneTodoListModelTests {
         // Middle item should be marked as not done
         #expect(displayedAfterToggle[1].isDone == false)
     }
+
+    @Test("Single done item unchecked remains visible")
+    func singleDoneItemUncheckedRemainsVisible() {
+        let storage = InMemoryStorage()
+        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+        let model = DoneTodoListModel(repository: repository)
+
+        // Add one done item
+        repository.add(title: "Test", detail: "", createIssue: false)
+        let item = repository.activeTodos.first!
+        repository.toggleDone(item)
+
+        model.loadDoneTodos()
+        #expect(model.displayedDoneTodos.count == 1)
+
+        let doneItem = model.displayedDoneTodos.first!
+
+        // Uncheck it
+        model.handleReopen(doneItem)
+
+        // Should still be displayed
+        #expect(model.displayedDoneTodos.count == 1, "Item should remain visible after unchecking")
+        #expect(model.toggledItemIDs.contains(doneItem.id), "Item should be in toggledItemIDs")
+
+        let displayedItem = model.displayedDoneTodos.first!
+        #expect(displayedItem.id == doneItem.id, "Same item should be displayed")
+        #expect(displayedItem.isDone == false, "Item should be marked as not done in repository")
+    }
 }

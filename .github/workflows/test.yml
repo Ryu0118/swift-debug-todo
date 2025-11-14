@@ -34,6 +34,17 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v5
 
+    - name: Select Xcode 26
+      run: sudo xcode-select -s /Applications/Xcode_26.1.app
+
+    - name: Download iOS platform
+      if: matrix.platform == 'ios'
+      run: sudo xcodebuild -downloadPlatform iOS
+
+    - name: Download visionOS platform
+      if: matrix.platform == 'visionos'
+      run: sudo xcodebuild -downloadPlatform visionOS
+
     - name: Build
       run: make build-${{ matrix.platform }}
 
@@ -57,6 +68,17 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v5
+
+    - name: Select Xcode 26
+      run: sudo xcode-select -s /Applications/Xcode_26.1.app
+
+    - name: Download iOS platform
+      if: matrix.config.name == 'iOS'
+      run: sudo xcodebuild -downloadPlatform iOS
+
+    - name: Download visionOS platform
+      if: matrix.config.name == 'visionOS'
+      run: sudo xcodebuild -downloadPlatform visionOS
 
     - name: Build Example
       run: |

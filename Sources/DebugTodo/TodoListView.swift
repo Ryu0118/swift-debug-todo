@@ -26,14 +26,16 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     // Computed property to get displayed active todos
     var displayedActiveTodos: [TodoItem] {
-        // Combine all items and filter/sort appropriately
+        // Explicitly reference both dependencies to ensure proper observation
         let allItems = repository.items
+        let toggledIDs = toggledItemIDs
+        let deletedIDs = deletedItemIDs
 
         return allItems
             .filter { item in
                 // Include if: (active and not deleted) OR (done and toggled and not deleted)
-                (!item.isDone && !deletedItemIDs.contains(item.id)) ||
-                (item.isDone && toggledItemIDs.contains(item.id) && !deletedItemIDs.contains(item.id))
+                (!item.isDone && !deletedIDs.contains(item.id)) ||
+                (item.isDone && toggledIDs.contains(item.id) && !deletedIDs.contains(item.id))
             }
             .sorted { $0.createdAt > $1.createdAt }
     }

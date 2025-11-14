@@ -26,14 +26,16 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     // Computed property to get displayed done todos
     var displayedDoneTodos: [TodoItem] {
-        // Combine all items and filter/sort appropriately
+        // Explicitly reference both dependencies to ensure proper observation
         let allItems = repository.items
+        let toggledIDs = toggledItemIDs
+        let deletedIDs = deletedItemIDs
 
         return allItems
             .filter { item in
                 // Include if: (done and not deleted) OR (active and toggled and not deleted)
-                (item.isDone && !deletedItemIDs.contains(item.id)) ||
-                (!item.isDone && toggledItemIDs.contains(item.id) && !deletedItemIDs.contains(item.id))
+                (item.isDone && !deletedIDs.contains(item.id)) ||
+                (!item.isDone && toggledIDs.contains(item.id) && !deletedIDs.contains(item.id))
             }
             .sorted { $0.updatedAt > $1.updatedAt }
     }
