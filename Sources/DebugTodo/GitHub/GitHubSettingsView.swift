@@ -12,19 +12,13 @@ public final class GitHubSettingsModel {
         self.service = service
     }
 
-    func saveConfiguration() {
-        Task {
-            do {
-                try await service.saveRepositorySettings()
-                try await service.credentials.saveToken()
-                await MainActor.run {
-                    showSuccess = true
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Failed to save configuration: \(error.localizedDescription)"
-                }
-            }
+    func saveConfiguration() async {
+        do {
+            try await service.saveRepositorySettings()
+            try await service.credentials.saveToken()
+            showSuccess = true
+        } catch {
+            errorMessage = "Failed to save configuration: \(error.localizedDescription)"
         }
     }
 }
@@ -109,7 +103,9 @@ public struct GitHubSettingsView: View {
 
             Section {
                 Button("Save") {
-                    model.saveConfiguration()
+                    Task {
+                        await model.saveConfiguration()
+                    }
                 }
                 .disabled(!model.service.repositorySettings.isValid)
             }

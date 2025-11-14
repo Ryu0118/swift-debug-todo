@@ -32,14 +32,14 @@ struct GitHubSettingsModelTests {
 
         let model = GitHubSettingsModel(service: service)
 
-        model.saveConfiguration()
+        await model.saveConfiguration()
 
         #expect(model.showSuccess == true)
         #expect(model.errorMessage == nil)
     }
 
     @Test("Save configuration sets error message on failure")
-    func saveConfigurationSetsErrorOnFailure() {
+    func saveConfigurationSetsErrorOnFailure() async {
         let service = GitHubService(
             tokenStorage: InMemoryTokenStorage(),
             repositorySettingsStorage: FailingRepositorySettingsStorage()
@@ -47,7 +47,7 @@ struct GitHubSettingsModelTests {
 
         let model = GitHubSettingsModel(service: service)
 
-        model.saveConfiguration()
+        await model.saveConfiguration()
 
         #expect(model.errorMessage != nil)
         #expect(model.showSuccess == false)
@@ -67,7 +67,7 @@ struct GitHubSettingsModelTests {
     }
 
     @Test("Error message can be cleared")
-    func errorMessageCanBeCleared() {
+    func errorMessageCanBeCleared() async {
         let service = GitHubService(
             tokenStorage: InMemoryTokenStorage(),
             repositorySettingsStorage: FailingRepositorySettingsStorage()
@@ -75,7 +75,7 @@ struct GitHubSettingsModelTests {
 
         let model = GitHubSettingsModel(service: service)
 
-        model.saveConfiguration()
+        await model.saveConfiguration()
         #expect(model.errorMessage != nil)
 
         model.errorMessage = nil
@@ -97,7 +97,7 @@ struct GitHubSettingsModelTests {
 
         let model = GitHubSettingsModel(service: service)
 
-        model.saveConfiguration()
+        await model.saveConfiguration()
         #expect(model.showSuccess == true)
 
         model.showSuccess = false
