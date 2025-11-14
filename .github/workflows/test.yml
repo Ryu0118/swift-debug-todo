@@ -58,9 +58,9 @@ jobs:
           - name: macOS
             destination: 'platform=macOS'
           - name: iOS
-            destination: 'platform=iOS Simulator,OS=latest,name=iPhone 17'
+            destination: 'platform=iOS Simulator,name=iPhone 17,OS=26.0.1'
           - name: visionOS
-            destination: 'platform=visionOS Simulator,OS=latest,name=Apple Vision Pro'
+            destination: 'platform=visionOS Simulator,name=Apple Vision Pro,OS=26.0'
     runs-on: macos-latest
 
     steps:
