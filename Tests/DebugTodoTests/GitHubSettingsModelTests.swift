@@ -1,4 +1,5 @@
 import Foundation
+import os
 import Testing
 
 @testable import DebugTodo
@@ -17,9 +18,9 @@ struct GitHubSettingsModelTests {
     }
 
     @Test("Save configuration sets success flag")
-    func saveConfigurationSetsSuccessFlag() {
+    func saveConfigurationSetsSuccessFlag() async {
         let tokenStorage = InMemoryTokenStorage()
-        try? tokenStorage.saveToken("test-token")
+        try? await tokenStorage.saveToken("test-token")
 
         let service = GitHubService(
             tokenStorage: tokenStorage,
@@ -82,9 +83,9 @@ struct GitHubSettingsModelTests {
     }
 
     @Test("Success flag can be reset")
-    func successFlagCanBeReset() {
+    func successFlagCanBeReset() async {
         let tokenStorage = InMemoryTokenStorage()
-        try? tokenStorage.saveToken("test-token")
+        try? await tokenStorage.saveToken("test-token")
 
         let service = GitHubService(
             tokenStorage: tokenStorage,
@@ -107,25 +108,18 @@ struct GitHubSettingsModelTests {
 // MARK: - Mock Storage Implementations
 
 final class InMemoryTokenStorage: @unchecked Sendable, GitHubTokenStorage {
-    private let lock = NSLock()
-    private var _token: String?
+    private let token = OSAllocatedUnfairLock<String?>(initialState: nil)
 
     func saveToken(_ token: String) async throws {
-        lock.lock()
-        defer { lock.unlock() }
-        _token = token
+        self.token.withLock { $0 = token }
     }
 
     func loadToken() async throws -> String? {
-        lock.lock()
-        defer { lock.unlock() }
-        return _token
+        token.withLock { $0 }
     }
 
     func deleteToken() async throws {
-        lock.lock()
-        defer { lock.unlock() }
-        _token = nil
+        token.withLock { $0 = nil }
     }
 
     nonisolated init() {}
@@ -133,19 +127,14 @@ final class InMemoryTokenStorage: @unchecked Sendable, GitHubTokenStorage {
 
 final class InMemoryRepositorySettingsStorage: @unchecked Sendable, GitHubRepositorySettingsStorage
 {
-    private let lock = NSLock()
-    private var _settings: GitHubRepositorySettings?
+    private let settings = OSAllocatedUnfairLock<GitHubRepositorySettings?>(initialState: nil)
 
     func save(_ settings: GitHubRepositorySettings) async throws {
-        lock.lock()
-        defer { lock.unlock() }
-        _settings = settings
+        self.settings.withLock { $0 = settings }
     }
 
     func load() async throws -> GitHubRepositorySettings {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let settings = _settings else {
+        guard let settings = settings.withLock({ $0 }) else {
             throw StorageError.notFound
         }
         return settings
