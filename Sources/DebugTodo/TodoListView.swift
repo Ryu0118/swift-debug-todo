@@ -33,9 +33,9 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     // Computed property to get displayed active todos (excluding deleted, including toggled items)
     var displayedActiveTodos: [TodoItem] {
         var items = cachedActiveTodos.filter { !deletedItemIDs.contains($0.id) && !toggledItemIDs.contains($0.id) }
-        // Add toggled items that are now "active" (were done, now unchecked)
+        // Add toggled items that were active and are now marked as done (but should still display in active list)
         for (id, item) in toggledItems {
-            if !deletedItemIDs.contains(id) && item.isDone {
+            if !deletedItemIDs.contains(id) && !item.isDone {
                 items.append(item)
             }
         }
