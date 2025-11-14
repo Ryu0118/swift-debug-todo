@@ -394,17 +394,23 @@ struct DoneTodoListModelTests {
 
         model.loadDoneTodos()
         let doneItem = model.displayedDoneTodos.first!
+        let itemId = doneItem.id
 
         // First toggle: done -> active
         model.handleReopen(doneItem)
         #expect(model.displayedDoneTodos.count == 1)
-        #expect(model.effectiveDoneState(for: doneItem) == false)
+        // Get the displayed item (which should still be showing)
+        let displayedItem1 = model.displayedDoneTodos.first!
+        #expect(displayedItem1.id == itemId)
+        #expect(model.effectiveDoneState(for: displayedItem1) == false)
         #expect(repository.activeTodos.count == 1)
 
-        // Second toggle: active -> done (should still work)
-        model.handleReopen(doneItem)
+        // Second toggle: active -> done (toggle the displayed item)
+        model.handleReopen(displayedItem1)
         #expect(model.displayedDoneTodos.count == 1)
-        #expect(model.effectiveDoneState(for: doneItem) == true)
+        let displayedItem2 = model.displayedDoneTodos.first!
+        #expect(displayedItem2.id == itemId)
+        #expect(model.effectiveDoneState(for: displayedItem2) == true)
         #expect(repository.doneTodos.count == 1)
     }
 }

@@ -338,17 +338,23 @@ struct TodoListModelTests {
         repository.add(title: "Test", detail: "", createIssue: false)
         model.loadActiveTodos()
         let item = model.displayedActiveTodos.first!
+        let itemId = item.id
 
         // First toggle: active -> done
         model.handleToggle(item)
         #expect(model.displayedActiveTodos.count == 1)
-        #expect(model.effectiveDoneState(for: item) == true)
+        // Get the displayed item (which should still be showing)
+        let displayedItem1 = model.displayedActiveTodos.first!
+        #expect(displayedItem1.id == itemId)
+        #expect(model.effectiveDoneState(for: displayedItem1) == true)
         #expect(repository.doneTodos.count == 1)
 
-        // Second toggle: done -> active (should still work)
-        model.handleToggle(item)
+        // Second toggle: done -> active (toggle the displayed item)
+        model.handleToggle(displayedItem1)
         #expect(model.displayedActiveTodos.count == 1)
-        #expect(model.effectiveDoneState(for: item) == false)
+        let displayedItem2 = model.displayedActiveTodos.first!
+        #expect(displayedItem2.id == itemId)
+        #expect(model.effectiveDoneState(for: displayedItem2) == false)
         #expect(repository.activeTodos.count == 1)
     }
 }

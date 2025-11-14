@@ -80,31 +80,31 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             pendingToggleItem = item
             showStateChangeAlert = true
         } else {
-            // Update repository immediately
-            repository.toggleDone(item)
-            // Toggle the in-memory state
+            // Toggle the in-memory state BEFORE updating repository
             if toggledItemIDs.contains(item.id) {
                 toggledItemIDs.remove(item.id)
                 toggledItems.removeValue(forKey: item.id)
             } else {
                 toggledItemIDs.insert(item.id)
-                toggledItems[item.id] = item
+                toggledItems[item.id] = item  // Save item BEFORE toggling
             }
+            // Update repository after saving the original state
+            repository.toggleDone(item)
         }
     }
 
     func toggleWithIssueUpdate(stateReason: String?) {
         guard let item = pendingToggleItem else { return }
-        // Update repository immediately
-        repository.toggleDone(item)
-        // Toggle the in-memory state
+        // Toggle the in-memory state BEFORE updating repository
         if toggledItemIDs.contains(item.id) {
             toggledItemIDs.remove(item.id)
             toggledItems.removeValue(forKey: item.id)
         } else {
             toggledItemIDs.insert(item.id)
-            toggledItems[item.id] = item
+            toggledItems[item.id] = item  // Save item BEFORE toggling
         }
+        // Update repository after saving the original state
+        repository.toggleDone(item)
         pendingToggleItem = nil
     }
 
@@ -131,16 +131,16 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     func toggleWithoutIssueUpdate() {
         guard let item = pendingToggleItem else { return }
-        // Update repository immediately
-        repository.toggleDone(item)
-        // Toggle the in-memory state
+        // Toggle the in-memory state BEFORE updating repository
         if toggledItemIDs.contains(item.id) {
             toggledItemIDs.remove(item.id)
             toggledItems.removeValue(forKey: item.id)
         } else {
             toggledItemIDs.insert(item.id)
-            toggledItems[item.id] = item
+            toggledItems[item.id] = item  // Save item BEFORE toggling
         }
+        // Update repository after saving the original state
+        repository.toggleDone(item)
         pendingToggleItem = nil
     }
 
