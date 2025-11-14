@@ -22,6 +22,10 @@ struct ContentView: View {
 }
 ```
 
+**Note**: `TodoListView` uses SwiftUI's `NavigationLink` internally. You need to provide a navigation context:
+- If presenting in a sheet or as a root view, wrap it in `NavigationStack`
+- If pushing via `NavigationLink`, the parent's `NavigationStack` is sufficient
+
 ### Storage Options
 
 #### 1. InMemory Storage
@@ -71,6 +75,57 @@ public protocol Storage: Sendable {
 }
 ```
 
+## Advanced: Custom Protocols
+
+For advanced use cases, you can implement custom storage and integration backends:
+
+### Custom Token Storage
+
+Implement `GitHubTokenStorage` for custom token persistence:
+
+```swift
+public protocol GitHubTokenStorage: Sendable {
+    func saveToken(_ token: String) throws
+    func loadToken() throws -> String?
+    func deleteToken() throws
+}
+```
+
+### Custom Repository Settings Storage
+
+Implement `GitHubRepositorySettingsStorage` for custom settings persistence:
+
+```swift
+public protocol GitHubRepositorySettingsStorage: Sendable {
+    func save(_ settings: GitHubRepositorySettings) throws
+    func load() throws -> GitHubRepositorySettings
+}
+```
+
+### Custom Issue Creator
+
+Implement `GitHubIssueCreatorProtocol` for custom GitHub integration or alternative issue tracking systems:
+
+```swift
+public protocol GitHubIssueCreatorProtocol: Sendable {
+    func createIssue(for item: TodoItem) async throws -> GitHubIssue?
+    func updateIssueState(
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        state: String,
+        stateReason: String?
+    ) async throws -> GitHubIssue?
+    func updateIssueContent(
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        title: String,
+        body: String?
+    ) async throws -> GitHubIssue?
+}
+```
+
 ## GitHub Integration
 
 DebugTodo supports automatic GitHub issue creation when new todos are added. This feature uses Personal Access Token (PAT) authentication, which is simple to set up and secure.
@@ -86,10 +141,13 @@ All credentials are securely stored in the Keychain.
 3. Fill in the details:
    - **Note**: A description for this token (e.g., "DebugTodo App")
    - **Expiration**: Choose an expiration period (recommended: 90 days or custom)
-   - **Scopes**: Check `repo` (Full control of private repositories)
-     - This includes `repo:status`, `repo_deployment`, `public_repo`, `repo:invite`, and `security_events`
+   - **Scopes**:
+     - For **private repositories**: Check `repo` (Full control of private repositories)
+     - For **public repositories only**: Check `public_repo` (Access to public repositories)
 4. Click "Generate token"
 5. **Important**: Copy the token immediately - you won't be able to see it again!
+
+**Note**: This library only needs permission to create and update issues. The `repo` scope provides full repository access (required for private repos), while `public_repo` is sufficient if you only work with public repositories.
 
 ### Security
 
@@ -120,15 +178,20 @@ struct ContentView: View {
     @State private var service = GitHubService()
 
     var body: some View {
-        NavigationStack {
-            TodoListView(
-                storage: UserDefaultsStorage(),
-                service: service
-            )
-        }
+        TodoListView(
+            storage: UserDefaultsStorage(),
+            service: service,
+            logLevel: .debug  // Optional: Enable debug logging
+        )
     }
 }
 ```
+
+**Note**: The `logLevel` parameter is optional and can be used to enable logging for debugging purposes. Available levels: `.trace`, `.debug`, `.info`, `.notice`, `.warning`, `.error`, `.critical`.
+
+**Navigation Context**: Since `TodoListView` uses `NavigationLink` for the settings view:
+- Wrap in `NavigationStack` if presenting as a root view or in a sheet
+- No wrapper needed if already inside a navigation hierarchy (e.g., pushed via `NavigationLink`)
 
 That's it! The settings button (gear icon) will automatically appear in the toolbar.
 
@@ -144,25 +207,24 @@ struct ContentView: View {
             key: "myAccessToken"
         )
 
-        let configStorage = KeychainConfigurationStorage(
+        let repositorySettingsStorage = KeychainRepositorySettingsStorage(
             service: "com.myapp.github",
             ownerKey: "myOwner",
-            repoKey: "myRepo"
+            repoKey: "myRepo",
+            showConfirmationAlertKey: "myShowConfirmation"
         )
 
         return GitHubService(
             tokenStorage: tokenStorage,
-            configurationStorage: configStorage
+            repositorySettingsStorage: repositorySettingsStorage
         )
     }()
 
     var body: some View {
-        NavigationStack {
-            TodoListView(
-                storage: UserDefaultsStorage(),
-                service: service
-            )
-        }
+        TodoListView(
+            storage: UserDefaultsStorage(),
+            service: service
+        )
     }
 }
 ```
@@ -172,36 +234,10 @@ struct ContentView: View {
 1. Tap the settings icon (gear) in the toolbar - it appears automatically!
 2. Paste your **Personal Access Token** (generated from GitHub)
 3. Enter the repository **Owner** and **Repo** name
-4. Tap "Save"
+4. (Optional) Toggle **"Show confirmation alert"** - When enabled, you'll see a confirmation dialog before creating GitHub issues for new todos
+5. Tap "Save"
 
 All credentials are securely stored in Keychain and will persist across app launches.
-
-#### Manually Creating Issues
-
-You can also manually trigger issue creation:
-
-```swift
-let service = GitHubService()
-
-Task {
-    do {
-        let issue = try await service.issueCreator.createIssue(for: todoItem)
-        print("Created issue: \(issue?.htmlUrl ?? "nil")")
-    } catch {
-        print("Failed to create issue: \(error)")
-    }
-}
-```
-
-### Disabling GitHub Integration
-
-To use TodoListView without GitHub integration, simply don't provide the `issueCreator` parameter (it defaults to `NoOpGitHubIssueCreator`):
-
-```swift
-TodoListView(storage: UserDefaultsStorage())
-```
-
-This is perfect for development/testing or if you don't need the GitHub integration feature.
 
 ## Example App
 
