@@ -51,12 +51,15 @@ jobs:
         platform: [iOS, macOS, visionOS]
         include:
           - platform: iOS
-            destination: 'platform=iOS Simulator,name=iPhone 17'
+            destination: 'generic/platform=iOS Simulator'
+            sdk: iphonesimulator
           - platform: macOS
             destination: 'platform=macOS'
+            sdk: macosx
             code_sign: 'CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO'
           - platform: visionOS
-            destination: 'platform=visionOS Simulator,name=Apple Vision Pro,OS=2.5'
+            destination: 'generic/platform=visionOS Simulator'
+            sdk: xrsimulator
     runs-on: macos-latest
 
     steps:
@@ -66,11 +69,12 @@ jobs:
     - name: Select Xcode 26
       run: sudo xcode-select -s /Applications/Xcode_26.1.app
 
-    - name: Build Example
+    - name: Build Example for ${{ matrix.platform }}
       run: |
         xcodebuild build \
           -project Example/Example.xcodeproj \
           -scheme Example \
           -configuration Debug \
+          -sdk ${{ matrix.sdk }} \
           -destination '${{ matrix.destination }}' \
           ${{ matrix.code_sign || '' }}
