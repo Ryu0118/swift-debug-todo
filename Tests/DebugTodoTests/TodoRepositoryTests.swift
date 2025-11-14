@@ -3,11 +3,12 @@ import Foundation
 @testable import DebugTodo
 
 @Suite("TodoRepository Tests")
+@MainActor
 struct TodoRepositoryTests {
     @Test("Add new todo item")
     func addTodo() {
         let storage = InMemoryStorage()
-        let repository = TodoRepository(storage: storage)
+        let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
         repository.add(title: "Test Todo", detail: "Test Detail")
 
@@ -20,7 +21,7 @@ struct TodoRepositoryTests {
     @Test("Update existing todo item")
     func updateTodo() {
         let storage = InMemoryStorage()
-        let repository = TodoRepository(storage: storage)
+        let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
         repository.add(title: "Original", detail: "Original detail")
         var item = repository.items[0]
@@ -36,7 +37,7 @@ struct TodoRepositoryTests {
     @Test("Delete todo item")
     func deleteTodo() {
         let storage = InMemoryStorage()
-        let repository = TodoRepository(storage: storage)
+        let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
         repository.add(title: "To Delete", detail: "")
         let item = repository.items[0]
@@ -49,7 +50,7 @@ struct TodoRepositoryTests {
     @Test("Toggle todo done status")
     func toggleDone() {
         let storage = InMemoryStorage()
-        let repository = TodoRepository(storage: storage)
+        let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
         repository.add(title: "Toggle Test", detail: "")
         let item = repository.items[0]
@@ -64,7 +65,7 @@ struct TodoRepositoryTests {
     @Test("Active todos filter")
     func activeTodos() {
         let storage = InMemoryStorage()
-        let repository = TodoRepository(storage: storage)
+        let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
         repository.add(title: "Active 1", detail: "")
         repository.add(title: "Active 2", detail: "")
@@ -79,7 +80,7 @@ struct TodoRepositoryTests {
     @Test("Done todos filter")
     func doneTodos() {
         let storage = InMemoryStorage()
-        let repository = TodoRepository(storage: storage)
+        let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
         repository.add(title: "Active 1", detail: "")
         repository.add(title: "Done 1", detail: "")
@@ -95,11 +96,11 @@ struct TodoRepositoryTests {
     @Test("Persistence with storage")
     func persistence() throws {
         let storage = InMemoryStorage()
-        let repository1 = TodoRepository(storage: storage)
+        let repository1 = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
         repository1.add(title: "Persistent", detail: "Should persist")
 
-        let repository2 = TodoRepository(storage: storage)
+        let repository2 = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
         #expect(repository2.items.count == 1)
         #expect(repository2.items[0].title == "Persistent")
     }
@@ -107,7 +108,7 @@ struct TodoRepositoryTests {
     @Test("Delete at offsets")
     func deleteAtOffsets() {
         let storage = InMemoryStorage()
-        let repository = TodoRepository(storage: storage)
+        let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
         repository.add(title: "Item 1", detail: "")
         repository.add(title: "Item 2", detail: "")

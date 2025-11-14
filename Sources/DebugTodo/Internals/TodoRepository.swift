@@ -1,13 +1,19 @@
 import Foundation
 import Observation
+import Logging
 
 @Observable
-final class TodoRepository<S: Storage> {
+@MainActor
+final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
     private let storage: S
+    let issueCreator: G
     private(set) var items: [TodoItem] = []
+    private(set) var lastCreatedIssue: GitHubIssue?
+    private(set) var lastError: Error?
 
-    init(storage: S) {
+    init(storage: S, issueCreator: G) {
         self.storage = storage
+        self.issueCreator = issueCreator
         loadItems()
     }
 
@@ -21,9 +27,60 @@ final class TodoRepository<S: Storage> {
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    func add(title: String, detail: String = "") {
+    func add(title: String, detail: String = "", createIssue: Bool = true, onIssueCreationError: ((Error) -> Void)? = nil) {
         let item = TodoItem(title: title, detail: detail)
         items.append(item)
+        saveItems()
+
+        // Trigger GitHub issue creation if enabled
+        if createIssue {
+            Task {
+                do {
+                    let issue = try await issueCreator.onTodoCreated(item)
+                    lastCreatedIssue = issue
+                    if let issue = issue {
+                        updateGitHubIssueUrl(for: item.id, url: issue.htmlUrl)
+                    }
+                } catch {
+                    lastError = error
+                    logger.error("Failed to create GitHub issue", metadata: ["error": "\(error)"])
+                    await MainActor.run {
+                        onIssueCreationError?(error)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Manually creates a GitHub issue for the given todo item.
+    ///
+    /// - Parameter item: The todo item to create an issue for.
+    /// - Returns: The created GitHub issue, or nil if issue creation is disabled.
+    func createGitHubIssue(for item: TodoItem) async throws -> GitHubIssue? {
+        lastError = nil
+        do {
+            let issue = try await issueCreator.createIssue(for: item)
+            lastCreatedIssue = issue
+            if let issue = issue {
+                updateGitHubIssueUrl(for: item.id, url: issue.htmlUrl)
+            }
+            return issue
+        } catch {
+            lastError = error
+            throw error
+        }
+    }
+
+    /// Updates the GitHub issue URL for a todo item.
+    ///
+    /// - Parameters:
+    ///   - id: The ID of the todo item.
+    ///   - url: The URL of the GitHub issue.
+    func updateGitHubIssueUrl(for id: UUID, url: String) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+        items[index].gitHubIssueUrl = url
         saveItems()
     }
 
@@ -61,7 +118,7 @@ final class TodoRepository<S: Storage> {
         do {
             items = try storage.load()
         } catch {
-            print("Failed to load items: \(error)")
+            logger.error("Failed to load items", metadata: ["error": "\(error)"])
             items = []
         }
     }
@@ -70,7 +127,7 @@ final class TodoRepository<S: Storage> {
         do {
             try storage.save(items)
         } catch {
-            print("Failed to save items: \(error)")
+            logger.error("Failed to save items", metadata: ["error": "\(error)"])
         }
     }
 }

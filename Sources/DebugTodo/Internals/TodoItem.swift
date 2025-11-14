@@ -20,6 +20,20 @@ public struct TodoItem: Identifiable, Codable, Equatable, Sendable {
     /// The date when the todo item was last updated.
     public var updatedAt: Date
 
+    /// The URL of the linked GitHub issue, if any.
+    public var gitHubIssueUrl: String?
+
+    /// Extracts the issue number from the GitHub issue URL.
+    public var gitHubIssueNumber: Int? {
+        guard let urlString = gitHubIssueUrl,
+              let url = URL(string: urlString),
+              let lastComponent = url.pathComponents.last,
+              let number = Int(lastComponent) else {
+            return nil
+        }
+        return number
+    }
+
     /// Creates a new todo item.
     ///
     /// - Parameters:
@@ -29,13 +43,15 @@ public struct TodoItem: Identifiable, Codable, Equatable, Sendable {
     ///   - isDone: Completion status. Defaults to false.
     ///   - createdAt: Creation date. Defaults to current date.
     ///   - updatedAt: Last update date. Defaults to current date.
+    ///   - gitHubIssueUrl: The URL of the linked GitHub issue. Defaults to nil.
     public init(
         id: UUID = UUID(),
         title: String,
         detail: String = "",
         isDone: Bool = false,
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        gitHubIssueUrl: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -43,5 +59,6 @@ public struct TodoItem: Identifiable, Codable, Equatable, Sendable {
         self.isDone = isDone
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.gitHubIssueUrl = gitHubIssueUrl
     }
 }
