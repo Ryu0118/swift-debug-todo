@@ -292,12 +292,63 @@ struct TodoListModelTests {
         let model = TodoListModel(repository: repository, service: nil)
 
         repository.add(title: "Test", detail: "", createIssue: false)
-        let item = repository.activeTodos.first!
+        model.loadActiveTodos()
+        let item = model.displayedActiveTodos.first!
 
         model.handleDelete(item)
 
         #expect(repository.activeTodos.isEmpty)
         #expect(model.deletedItemIDs.contains(item.id))
         #expect(model.displayedActiveTodos.isEmpty)
+    }
+
+    @Test("Toggled item remains visible in active list with checked state")
+    func toggledItemRemainsVisibleInActiveList() {
+        let storage = InMemoryStorage()
+        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+        let model = TodoListModel(repository: repository, service: nil)
+
+        repository.add(title: "Test", detail: "", createIssue: false)
+        model.loadActiveTodos()
+        let item = model.displayedActiveTodos.first!
+
+        #expect(item.isDone == false)
+        #expect(model.effectiveDoneState(for: item) == false)
+
+        // Toggle the item
+        model.handleToggle(item)
+
+        // Item should still be in displayed list
+        #expect(model.displayedActiveTodos.count == 1)
+        // Repository should be updated
+        #expect(repository.doneTodos.count == 1)
+        #expect(repository.activeTodos.isEmpty)
+        // Effective state should show as done
+        #expect(model.effectiveDoneState(for: item) == true)
+        // Item should be in toggled set
+        #expect(model.toggledItemIDs.contains(item.id))
+    }
+
+    @Test("Multiple toggles on same item work correctly")
+    func multipleTogglesOnSameItem() {
+        let storage = InMemoryStorage()
+        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+        let model = TodoListModel(repository: repository, service: nil)
+
+        repository.add(title: "Test", detail: "", createIssue: false)
+        model.loadActiveTodos()
+        let item = model.displayedActiveTodos.first!
+
+        // First toggle: active -> done
+        model.handleToggle(item)
+        #expect(model.displayedActiveTodos.count == 1)
+        #expect(model.effectiveDoneState(for: item) == true)
+        #expect(repository.doneTodos.count == 1)
+
+        // Second toggle: done -> active (should still work)
+        model.handleToggle(item)
+        #expect(model.displayedActiveTodos.count == 1)
+        #expect(model.effectiveDoneState(for: item) == false)
+        #expect(repository.activeTodos.count == 1)
     }
 }

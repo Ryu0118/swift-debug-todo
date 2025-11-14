@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos, ios]
+        platform: [macos, ios, visionos]
     runs-on: macos-latest
 
     steps:
@@ -48,12 +48,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [iOS, macOS]
+        platform: [iOS, macOS, visionOS]
         include:
           - platform: iOS
             destination: 'platform=iOS Simulator,name=iPhone 16'
           - platform: macOS
             destination: 'platform=macOS'
+          - platform: visionOS
+            destination: 'platform=visionOS Simulator,name=Apple Vision Pro'
     runs-on: macos-latest
 
     steps:

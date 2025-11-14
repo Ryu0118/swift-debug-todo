@@ -343,11 +343,68 @@ struct DoneTodoListModelTests {
         let item = repository.activeTodos.first!
         repository.toggleDone(item)
 
-        let doneItem = repository.doneTodos.first!
+        model.loadDoneTodos()
+        let doneItem = model.displayedDoneTodos.first!
         model.handleDelete(doneItem)
 
         #expect(repository.doneTodos.isEmpty)
         #expect(model.deletedItemIDs.contains(doneItem.id))
         #expect(model.displayedDoneTodos.isEmpty)
+    }
+
+    @Test("Unchecked item remains visible in done list with unchecked state")
+    func uncheckedItemRemainsVisibleInDoneList() {
+        let storage = InMemoryStorage()
+        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+        let model = DoneTodoListModel(repository: repository)
+
+        repository.add(title: "Test", detail: "", createIssue: false)
+        let item = repository.activeTodos.first!
+        repository.toggleDone(item)
+
+        model.loadDoneTodos()
+        let doneItem = model.displayedDoneTodos.first!
+
+        #expect(doneItem.isDone == true)
+        #expect(model.effectiveDoneState(for: doneItem) == true)
+
+        // Uncheck the item
+        model.handleReopen(doneItem)
+
+        // Item should still be in displayed list
+        #expect(model.displayedDoneTodos.count == 1)
+        // Repository should be updated
+        #expect(repository.activeTodos.count == 1)
+        #expect(repository.doneTodos.isEmpty)
+        // Effective state should show as not done
+        #expect(model.effectiveDoneState(for: doneItem) == false)
+        // Item should be in toggled set
+        #expect(model.toggledItemIDs.contains(doneItem.id))
+    }
+
+    @Test("Multiple toggles on done item work correctly")
+    func multipleTogglesOnDoneItem() {
+        let storage = InMemoryStorage()
+        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+        let model = DoneTodoListModel(repository: repository)
+
+        repository.add(title: "Test", detail: "", createIssue: false)
+        let item = repository.activeTodos.first!
+        repository.toggleDone(item)
+
+        model.loadDoneTodos()
+        let doneItem = model.displayedDoneTodos.first!
+
+        // First toggle: done -> active
+        model.handleReopen(doneItem)
+        #expect(model.displayedDoneTodos.count == 1)
+        #expect(model.effectiveDoneState(for: doneItem) == false)
+        #expect(repository.activeTodos.count == 1)
+
+        // Second toggle: active -> done (should still work)
+        model.handleReopen(doneItem)
+        #expect(model.displayedDoneTodos.count == 1)
+        #expect(model.effectiveDoneState(for: doneItem) == true)
+        #expect(repository.doneTodos.count == 1)
     }
 }

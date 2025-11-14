@@ -94,25 +94,40 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             pendingReopenItem = item
             showReopenAlert = true
         } else {
-            // Update repository immediately, but hide from view
+            // Update repository immediately
             repository.toggleDone(item)
-            toggledItemIDs.insert(item.id)
+            // Toggle the in-memory state
+            if toggledItemIDs.contains(item.id) {
+                toggledItemIDs.remove(item.id)
+            } else {
+                toggledItemIDs.insert(item.id)
+            }
         }
     }
 
     func reopenWithoutIssueUpdate() {
         guard let item = pendingReopenItem else { return }
-        // Update repository immediately, but hide from view
+        // Update repository immediately
         repository.toggleDone(item)
-        toggledItemIDs.insert(item.id)
+        // Toggle the in-memory state
+        if toggledItemIDs.contains(item.id) {
+            toggledItemIDs.remove(item.id)
+        } else {
+            toggledItemIDs.insert(item.id)
+        }
         pendingReopenItem = nil
     }
 
     func reopenWithIssueUpdate() {
         guard let item = pendingReopenItem else { return }
-        // Update repository immediately, but hide from view
+        // Update repository immediately
         repository.toggleDone(item)
-        toggledItemIDs.insert(item.id)
+        // Toggle the in-memory state
+        if toggledItemIDs.contains(item.id) {
+            toggledItemIDs.remove(item.id)
+        } else {
+            toggledItemIDs.insert(item.id)
+        }
         pendingReopenItem = nil
     }
 

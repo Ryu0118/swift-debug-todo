@@ -69,17 +69,27 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             pendingToggleItem = item
             showStateChangeAlert = true
         } else {
-            // Update repository immediately, but hide from view
+            // Update repository immediately
             repository.toggleDone(item)
-            toggledItemIDs.insert(item.id)
+            // Toggle the in-memory state
+            if toggledItemIDs.contains(item.id) {
+                toggledItemIDs.remove(item.id)
+            } else {
+                toggledItemIDs.insert(item.id)
+            }
         }
     }
 
     func toggleWithIssueUpdate(stateReason: String?) {
         guard let item = pendingToggleItem else { return }
-        // Update repository immediately, but hide from view
+        // Update repository immediately
         repository.toggleDone(item)
-        toggledItemIDs.insert(item.id)
+        // Toggle the in-memory state
+        if toggledItemIDs.contains(item.id) {
+            toggledItemIDs.remove(item.id)
+        } else {
+            toggledItemIDs.insert(item.id)
+        }
         pendingToggleItem = nil
     }
 
@@ -106,9 +116,14 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     func toggleWithoutIssueUpdate() {
         guard let item = pendingToggleItem else { return }
-        // Update repository immediately, but hide from view
+        // Update repository immediately
         repository.toggleDone(item)
-        toggledItemIDs.insert(item.id)
+        // Toggle the in-memory state
+        if toggledItemIDs.contains(item.id) {
+            toggledItemIDs.remove(item.id)
+        } else {
+            toggledItemIDs.insert(item.id)
+        }
         pendingToggleItem = nil
     }
 
