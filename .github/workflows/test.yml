@@ -44,7 +44,11 @@ jobs:
       run: make test-${{ matrix.platform }}
 
   example:
-    name: Example macOS
+    name: Example ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos, ios, visionos]
     runs-on: macos-latest
 
     steps:
@@ -55,11 +59,4 @@ jobs:
       run: sudo xcode-select -s /Applications/Xcode_26.1.app
 
     - name: Build Example
-      run: |
-        xcodebuild clean build \
-          -scheme Example \
-          -project Example/Example.xcodeproj \
-          -destination 'platform=macOS' \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO
+      run: make build-example-${{ matrix.platform }}

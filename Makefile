@@ -90,6 +90,57 @@ test-maccatalyst:
 test-visionos:
 	@$(MAKE) test-xcode PLATFORM=VISIONOS
 
+# Example app builds
+EXAMPLE_PROJECT = Example/Example.xcodeproj
+EXAMPLE_SCHEME = Example
+EXAMPLE_DERIVED_DATA = .build/derivedData/example
+
+build-example-ios:
+	@echo "Building Example for iOS..."
+	@xcodebuild build \
+		-scheme $(EXAMPLE_SCHEME) \
+		-project $(EXAMPLE_PROJECT) \
+		-configuration $(XCODE_CONFIG) \
+		-destination "platform=iOS Simulator,id=$(call udid_for,iPhone 16)" \
+		-derivedDataPath $(EXAMPLE_DERIVED_DATA) \
+		CODE_SIGN_IDENTITY="" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=NO \
+		$(XCBEAUTIFY)
+
+build-example-macos:
+	@echo "Building Example for macOS..."
+	@xcodebuild build \
+		-scheme $(EXAMPLE_SCHEME) \
+		-project $(EXAMPLE_PROJECT) \
+		-configuration $(XCODE_CONFIG) \
+		-destination "platform=macOS" \
+		-derivedDataPath $(EXAMPLE_DERIVED_DATA) \
+		CODE_SIGN_IDENTITY="" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=NO \
+		$(XCBEAUTIFY)
+
+build-example-visionos:
+	@echo "Building Example for visionOS..."
+	@xcodebuild build \
+		-scheme $(EXAMPLE_SCHEME) \
+		-project $(EXAMPLE_PROJECT) \
+		-configuration $(XCODE_CONFIG) \
+		-destination "platform=visionOS Simulator,id=$(call udid_for,Apple Vision Pro)" \
+		-derivedDataPath $(EXAMPLE_DERIVED_DATA) \
+		CODE_SIGN_IDENTITY="" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=NO \
+		$(XCBEAUTIFY)
+
+build-example-all:
+	@echo "Building Example for all platforms..."
+	@$(MAKE) build-example-macos
+	@$(MAKE) build-example-ios || echo "⚠️  Example iOS build failed"
+	@$(MAKE) build-example-visionos || echo "⚠️  Example visionOS build failed"
+	@echo "✅ Example builds completed"
+
 # Utility targets
 clean:
 	@swift package clean
@@ -108,6 +159,7 @@ format:
 	build-all-platforms test-all-platforms \
 	build-ios build-macos build-maccatalyst build-visionos \
 	test-ios test-macos test-maccatalyst test-visionos \
+	build-example-ios build-example-macos build-example-visionos build-example-all \
 	clean format
 
 define udid_for
