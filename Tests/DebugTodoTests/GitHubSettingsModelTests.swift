@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import DebugTodo
 
 @Suite("GitHubSettingsModel Tests")
@@ -24,7 +25,8 @@ struct GitHubSettingsModelTests {
             tokenStorage: tokenStorage,
             repositorySettingsStorage: InMemoryRepositorySettingsStorage()
         )
-        service.repositorySettings = GitHubRepositorySettings(owner: "test", repo: "repo", showConfirmationAlert: false)
+        service.repositorySettings = GitHubRepositorySettings(
+            owner: "test", repo: "repo", showConfirmationAlert: false)
         service.credentials.personalAccessToken = "test-token"
 
         let model = GitHubSettingsModel(service: service)
@@ -53,7 +55,8 @@ struct GitHubSettingsModelTests {
     @Test("Model holds reference to service")
     func modelHoldsReferenceToService() {
         let service = GitHubService()
-        service.repositorySettings = GitHubRepositorySettings(owner: "test-owner", repo: "test-repo", showConfirmationAlert: true)
+        service.repositorySettings = GitHubRepositorySettings(
+            owner: "test-owner", repo: "test-repo", showConfirmationAlert: true)
 
         let model = GitHubSettingsModel(service: service)
 
@@ -87,7 +90,8 @@ struct GitHubSettingsModelTests {
             tokenStorage: tokenStorage,
             repositorySettingsStorage: InMemoryRepositorySettingsStorage()
         )
-        service.repositorySettings = GitHubRepositorySettings(owner: "test", repo: "repo", showConfirmationAlert: false)
+        service.repositorySettings = GitHubRepositorySettings(
+            owner: "test", repo: "repo", showConfirmationAlert: false)
         service.credentials.personalAccessToken = "test-token"
 
         let model = GitHubSettingsModel(service: service)
@@ -127,7 +131,8 @@ final class InMemoryTokenStorage: @unchecked Sendable, GitHubTokenStorage {
     nonisolated init() {}
 }
 
-final class InMemoryRepositorySettingsStorage: @unchecked Sendable, GitHubRepositorySettingsStorage {
+final class InMemoryRepositorySettingsStorage: @unchecked Sendable, GitHubRepositorySettingsStorage
+{
     private let lock = NSLock()
     private var _settings: GitHubRepositorySettings?
 

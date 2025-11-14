@@ -49,7 +49,8 @@ public final class GitHubService {
     ///   - repositorySettingsStorage: Storage for the repository settings. Defaults to Keychain.
     public init(
         tokenStorage: GitHubTokenStorage = KeychainTokenStorage(),
-        repositorySettingsStorage: GitHubRepositorySettingsStorage = KeychainRepositorySettingsStorage()
+        repositorySettingsStorage: GitHubRepositorySettingsStorage =
+            KeychainRepositorySettingsStorage()
     ) {
         // Load repository settings from storage
         let loadedSettings: GitHubRepositorySettings

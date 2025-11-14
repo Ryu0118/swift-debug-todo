@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import DebugTodo
 
 @Suite("AddEditTodoModel Tests")
@@ -8,7 +9,8 @@ struct AddEditTodoModelTests {
 
     @Test("Initialize model for adding new todo")
     func initializeForAddingNew() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         #expect(model.editingItem == nil)
@@ -20,7 +22,8 @@ struct AddEditTodoModelTests {
 
     @Test("Initialize model for editing existing todo")
     func initializeForEditing() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let item = TodoItem(title: "Test Title", detail: "Test Detail")
         let model = AddEditTodoModel(repository: repository, editingItem: item)
 
@@ -31,7 +34,8 @@ struct AddEditTodoModelTests {
 
     @Test("Save returns false when title is empty")
     func saveReturnsFalseWhenTitleIsEmpty() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = ""
@@ -43,7 +47,8 @@ struct AddEditTodoModelTests {
 
     @Test("Save returns false when title is whitespace only")
     func saveReturnsFalseWhenTitleIsWhitespace() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = "   \n\t  "
@@ -55,7 +60,8 @@ struct AddEditTodoModelTests {
 
     @Test("Save adds new todo without confirmation when no repository settings")
     func saveAddsNewTodoWithoutConfirmation() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = "New Todo"
@@ -70,8 +76,10 @@ struct AddEditTodoModelTests {
 
     @Test("Save adds new todo without confirmation when confirmation disabled")
     func saveAddsNewTodoWhenConfirmationDisabled() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
-        let settings = GitHubRepositorySettings(owner: "test", repo: "repo", showConfirmationAlert: false)
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let settings = GitHubRepositorySettings(
+            owner: "test", repo: "repo", showConfirmationAlert: false)
         let model = AddEditTodoModel(repository: repository, repositorySettings: settings)
 
         model.title = "New Todo"
@@ -83,8 +91,10 @@ struct AddEditTodoModelTests {
 
     @Test("Save shows confirmation alert when confirmation enabled")
     func saveShowsConfirmationAlertWhenEnabled() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
-        let settings = GitHubRepositorySettings(owner: "test", repo: "repo", showConfirmationAlert: true)
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let settings = GitHubRepositorySettings(
+            owner: "test", repo: "repo", showConfirmationAlert: true)
         let model = AddEditTodoModel(repository: repository, repositorySettings: settings)
 
         model.title = "New Todo"
@@ -115,7 +125,8 @@ struct AddEditTodoModelTests {
 
     @Test("Save trims whitespace from title")
     func saveTrimWhitespaceFromTitle() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = "  Trimmed Title  "
@@ -127,7 +138,8 @@ struct AddEditTodoModelTests {
 
     @Test("Add with issue creates todo")
     func addWithIssue() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = "New Todo"
@@ -140,7 +152,8 @@ struct AddEditTodoModelTests {
 
     @Test("Add without issue creates todo")
     func addWithoutIssue() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = "New Todo"
@@ -153,7 +166,8 @@ struct AddEditTodoModelTests {
 
     @Test("Error message can be set")
     func errorMessageCanBeSet() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.errorMessage = "Test error"
@@ -163,7 +177,8 @@ struct AddEditTodoModelTests {
 
     @Test("Error message can be cleared")
     func errorMessageCanBeCleared() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.errorMessage = "Test error"
@@ -174,7 +189,8 @@ struct AddEditTodoModelTests {
 
     @Test("Show create issue alert flag can be toggled")
     func showCreateIssueAlertCanBeToggled() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.showCreateIssueAlert = true
@@ -186,8 +202,10 @@ struct AddEditTodoModelTests {
 
     @Test("Model preserves repository settings")
     func modelPreservesRepositorySettings() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
-        let settings = GitHubRepositorySettings(owner: "test-owner", repo: "test-repo", showConfirmationAlert: true)
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let settings = GitHubRepositorySettings(
+            owner: "test-owner", repo: "test-repo", showConfirmationAlert: true)
         let model = AddEditTodoModel(repository: repository, repositorySettings: settings)
 
         #expect(model.repositorySettings?.owner == "test-owner")
@@ -197,7 +215,8 @@ struct AddEditTodoModelTests {
 
     @Test("Model preserves service reference")
     func modelPreservesServiceReference() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
         let model = AddEditTodoModel(repository: repository, service: service)
 

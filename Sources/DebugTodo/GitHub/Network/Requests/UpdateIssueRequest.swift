@@ -24,17 +24,18 @@ struct UpdateIssueRequest: APIRequest {
         [
             "Authorization": "Bearer \(token)",
             "Accept": "application/vnd.github+json",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         ]
     }
 
     var body: (any RequestBody)? {
-        JSONRequestBody(body: Body(
-            title: title,
-            body: issueBody,
-            state: state,
-            stateReason: stateReason
-        ))
+        JSONRequestBody(
+            body: Body(
+                title: title,
+                body: issueBody,
+                state: state,
+                stateReason: stateReason
+            ))
     }
 
     func parseResponse(from data: Data, httpURLResponse: HTTPURLResponse) throws -> GitHubIssue {
@@ -43,8 +44,8 @@ struct UpdateIssueRequest: APIRequest {
     }
 }
 
-private extension UpdateIssueRequest {
-    struct Body: Codable, Sendable {
+extension UpdateIssueRequest {
+    fileprivate struct Body: Codable, Sendable {
         let title: String?
         let body: String?
         let state: String?

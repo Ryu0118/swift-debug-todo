@@ -1,4 +1,5 @@
 import Foundation
+
 @testable import DebugTodo
 
 @MainActor
@@ -39,7 +40,10 @@ final class MockGitHubService {
     var repositorySettings: GitHubRepositorySettings
     let issueCreator: MockGitHubIssueCreator
 
-    init(repositorySettings: GitHubRepositorySettings = GitHubRepositorySettings(owner: "test", repo: "test-repo", showConfirmationAlert: false)) {
+    init(
+        repositorySettings: GitHubRepositorySettings = GitHubRepositorySettings(
+            owner: "test", repo: "test-repo", showConfirmationAlert: false)
+    ) {
         self.repositorySettings = repositorySettings
         self.issueCreator = MockGitHubIssueCreator()
     }

@@ -16,7 +16,7 @@ struct ValidateTokenRequest: APIRequest {
     var headers: [String: String] {
         [
             "Authorization": "Bearer \(token)",
-            "Accept": "application/vnd.github+json"
+            "Accept": "application/vnd.github+json",
         ]
     }
 }

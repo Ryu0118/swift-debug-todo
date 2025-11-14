@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import DebugTodo
 
 @Suite("DoneTodoListModel Tests")
@@ -8,7 +9,8 @@ struct DoneTodoListModelTests {
 
     @Test("Initialize model")
     func initialize() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
         #expect(model.showDeleteAllAlert == false)
@@ -19,8 +21,10 @@ struct DoneTodoListModelTests {
 
     @Test("Initialize model with repository settings")
     func initializeWithRepositorySettings() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
-        let settings = GitHubRepositorySettings(owner: "test", repo: "repo", showConfirmationAlert: true)
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let settings = GitHubRepositorySettings(
+            owner: "test", repo: "repo", showConfirmationAlert: true)
         let model = DoneTodoListModel(repository: repository, repositorySettings: settings)
 
         #expect(model.repositorySettings?.owner == "test")
@@ -29,7 +33,8 @@ struct DoneTodoListModelTests {
 
     @Test("Initialize model with service")
     func initializeWithService() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
         let model = DoneTodoListModel(repository: repository, service: service)
 
@@ -163,7 +168,8 @@ struct DoneTodoListModelTests {
 
     @Test("Selected todo IDs can be modified")
     func selectedTodoIDsCanBeModified() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
         let id1 = UUID()
@@ -182,7 +188,8 @@ struct DoneTodoListModelTests {
 
     @Test("Show delete all alert flag can be toggled")
     func showDeleteAllAlertCanBeToggled() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
         model.showDeleteAllAlert = true
@@ -194,7 +201,8 @@ struct DoneTodoListModelTests {
 
     @Test("Show reopen alert flag can be toggled")
     func showReopenAlertCanBeToggled() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
         model.showReopenAlert = true
@@ -206,7 +214,8 @@ struct DoneTodoListModelTests {
 
     @Test("Create add edit model for editing")
     func createAddEditModelForEditing() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
         let model = DoneTodoListModel(repository: repository, service: service)
 
@@ -224,7 +233,8 @@ struct DoneTodoListModelTests {
 
     @Test("Pending reopen item can be set and cleared")
     func pendingReopenItemCanBeSetAndCleared() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
         let item = TodoItem(title: "Test", detail: "")

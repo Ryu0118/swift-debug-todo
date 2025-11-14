@@ -21,7 +21,7 @@ struct CreateIssueRequest: APIRequest {
         [
             "Authorization": "Bearer \(token)",
             "Accept": "application/vnd.github+json",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         ]
     }
 
@@ -35,8 +35,8 @@ struct CreateIssueRequest: APIRequest {
     }
 }
 
-private extension CreateIssueRequest {
-    struct Body: Codable, Sendable {
+extension CreateIssueRequest {
+    fileprivate struct Body: Codable, Sendable {
         let title: String
         let body: String?
     }

@@ -1,5 +1,5 @@
-import SwiftUI
 import Logging
+import SwiftUI
 
 @MainActor
 @Observable
@@ -11,9 +11,9 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     var pendingToggleItem: TodoItem?
     var showDeleteAlert = false
     var pendingDeleteItem: TodoItem?
-#if os(iOS)
-    var editMode: EditMode = .inactive
-#endif
+    #if os(iOS)
+        var editMode: EditMode = .inactive
+    #endif
 
     // Child models
     var addEditModel: AddEditTodoModel<S, G>?
@@ -41,7 +41,8 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     func updateIssueStateForToggle(item: TodoItem, stateReason: String?) async throws {
         guard let service = service,
-              let issueNumber = item.gitHubIssueNumber else {
+            let issueNumber = item.gitHubIssueNumber
+        else {
             return
         }
 
@@ -55,7 +56,8 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             state: newState,
             stateReason: stateReason
         )
-        logger.debug("Updated issue #\(issueNumber) to \(newState) with reason: \(stateReason ?? "nil")")
+        logger.debug(
+            "Updated issue #\(issueNumber) to \(newState) with reason: \(stateReason ?? "nil")")
     }
 
     func toggleWithoutIssueUpdate() {
@@ -88,7 +90,8 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     func closeIssueForDelete(item: TodoItem, stateReason: String) async throws {
         guard let service = service,
-              let issueNumber = item.gitHubIssueNumber else {
+            let issueNumber = item.gitHubIssueNumber
+        else {
             return
         }
 
@@ -131,7 +134,9 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
     ///   - storage: The storage to use for persisting todo items.
     ///   - issueCreator: The GitHub issue creator. Defaults to no-op.
     ///   - logLevel: The log level to use. If provided, bootstraps the logging system.
-    public init(storage: S, issueCreator: G = NoOpGitHubIssueCreator(), logLevel: Logger.Level? = nil) {
+    public init(
+        storage: S, issueCreator: G = NoOpGitHubIssueCreator(), logLevel: Logger.Level? = nil
+    ) {
         bootstrapLogging(logLevel: logLevel)
         let repository = TodoRepository(storage: storage, issueCreator: issueCreator)
         self.model = TodoListModel(repository: repository, service: nil)
@@ -143,7 +148,8 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
     ///   - storage: The storage to use for persisting todo items.
     ///   - service: The GitHub service for issue creation and settings.
     ///   - logLevel: The log level to use. If provided, bootstraps the logging system.
-    public init(storage: S, service: GitHubService, logLevel: Logger.Level? = nil) where G == GitHubIssueCreator {
+    public init(storage: S, service: GitHubService, logLevel: Logger.Level? = nil)
+    where G == GitHubIssueCreator {
         bootstrapLogging(logLevel: logLevel)
         let repository = TodoRepository(storage: storage, issueCreator: service.issueCreator)
         self.model = TodoListModel(repository: repository, service: service)
@@ -188,11 +194,11 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
             }
         }
         .toolbar {
-#if os(iOS)
-            ToolbarItem(placement: .topBarLeading) {
-                EditButton()
-            }
-#endif
+            #if os(iOS)
+                ToolbarItem(placement: .topBarLeading) {
+                    EditButton()
+                }
+            #endif
             if let service = model.service {
                 ToolbarItem(placement: .primaryAction) {
                     NavigationLink {
@@ -226,14 +232,19 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
         .sheet(isPresented: $model.isShowingAddView) {
             AddEditTodoView(model: model.createAddEditModel())
         }
-        .alert(model.pendingToggleItem?.isDone == true ? "Reopen GitHub Issue?" : "Close GitHub Issue?", isPresented: $model.showStateChangeAlert) {
+        .alert(
+            model.pendingToggleItem?.isDone == true
+                ? "Reopen GitHub Issue?" : "Close GitHub Issue?",
+            isPresented: $model.showStateChangeAlert
+        ) {
             if model.pendingToggleItem?.isDone == false {
                 Button("Check & Close as Completed") {
                     if let item = model.pendingToggleItem {
                         model.toggleWithIssueUpdate(stateReason: "completed")
                         Task {
                             do {
-                                try await model.updateIssueStateForToggle(item: item, stateReason: "completed")
+                                try await model.updateIssueStateForToggle(
+                                    item: item, stateReason: "completed")
                             } catch {
                                 logger.error("Failed to update GitHub issue state: \(error)")
                             }
@@ -245,7 +256,8 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                         model.toggleWithIssueUpdate(stateReason: "not_planned")
                         Task {
                             do {
-                                try await model.updateIssueStateForToggle(item: item, stateReason: "not_planned")
+                                try await model.updateIssueStateForToggle(
+                                    item: item, stateReason: "not_planned")
                             } catch {
                                 logger.error("Failed to update GitHub issue state: \(error)")
                             }
@@ -257,7 +269,8 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                         model.toggleWithIssueUpdate(stateReason: "duplicate")
                         Task {
                             do {
-                                try await model.updateIssueStateForToggle(item: item, stateReason: "duplicate")
+                                try await model.updateIssueStateForToggle(
+                                    item: item, stateReason: "duplicate")
                             } catch {
                                 logger.error("Failed to update GitHub issue state: \(error)")
                             }
@@ -273,7 +286,8 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                         model.toggleWithIssueUpdate(stateReason: nil)
                         Task {
                             do {
-                                try await model.updateIssueStateForToggle(item: item, stateReason: nil)
+                                try await model.updateIssueStateForToggle(
+                                    item: item, stateReason: nil)
                             } catch {
                                 logger.error("Failed to update GitHub issue state: \(error)")
                             }
@@ -301,7 +315,8 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 if let item = model.pendingDeleteItem {
                     Task {
                         do {
-                            try await model.closeIssueForDelete(item: item, stateReason: "completed")
+                            try await model.closeIssueForDelete(
+                                item: item, stateReason: "completed")
                         } catch {
                             logger.error("Failed to close GitHub issue: \(error)")
                         }
@@ -313,7 +328,8 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 if let item = model.pendingDeleteItem {
                     Task {
                         do {
-                            try await model.closeIssueForDelete(item: item, stateReason: "not_planned")
+                            try await model.closeIssueForDelete(
+                                item: item, stateReason: "not_planned")
                         } catch {
                             logger.error("Failed to close GitHub issue: \(error)")
                         }
@@ -325,7 +341,8 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 if let item = model.pendingDeleteItem {
                     Task {
                         do {
-                            try await model.closeIssueForDelete(item: item, stateReason: "duplicate")
+                            try await model.closeIssueForDelete(
+                                item: item, stateReason: "duplicate")
                         } catch {
                             logger.error("Failed to close GitHub issue: \(error)")
                         }
@@ -342,8 +359,8 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
         } message: {
             Text("Do you want to close the linked GitHub issue? Choose a reason:")
         }
-#if os(iOS)
-        .environment(\.editMode, $model.editMode)
-#endif
+        #if os(iOS)
+            .environment(\.editMode, $model.editMode)
+        #endif
     }
 }

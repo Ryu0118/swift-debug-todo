@@ -13,7 +13,10 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     var showCreateIssueAlert = false
     var errorMessage: String?
 
-    init(repository: TodoRepository<S, G>, repositorySettings: GitHubRepositorySettings? = nil, service: GitHubService? = nil, editingItem: TodoItem? = nil) {
+    init(
+        repository: TodoRepository<S, G>, repositorySettings: GitHubRepositorySettings? = nil,
+        service: GitHubService? = nil, editingItem: TodoItem? = nil
+    ) {
         self.repository = repository
         self.repositorySettings = repositorySettings
         self.service = service
@@ -35,7 +38,8 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             return true
         } else {
             // Add new item - check if confirmation is needed
-            if let repositorySettings = repositorySettings, repositorySettings.showConfirmationAlert {
+            if let repositorySettings = repositorySettings, repositorySettings.showConfirmationAlert
+            {
                 showCreateIssueAlert = true
                 return false
             } else {
@@ -47,8 +51,9 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     func updateGitHubIssue() async throws {
         guard let editingItem = editingItem,
-              let service = service,
-              let issueNumber = editingItem.gitHubIssueNumber else {
+            let service = service,
+            let issueNumber = editingItem.gitHubIssueNumber
+        else {
             return
         }
 
@@ -109,8 +114,9 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 }
 
                 if let editingItem = model.editingItem,
-                   let issueUrl = editingItem.gitHubIssueUrl,
-                   let url = URL(string: issueUrl) {
+                    let issueUrl = editingItem.gitHubIssueUrl,
+                    let url = URL(string: issueUrl)
+                {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
                             openURL(url)
@@ -153,10 +159,13 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
             } message: {
                 Text("Do you want to create a GitHub issue for this todo?")
             }
-            .alert("Failed to Create Issue", isPresented: Binding(
-                get: { model.errorMessage != nil },
-                set: { if !$0 { model.errorMessage = nil } }
-            )) {
+            .alert(
+                "Failed to Create Issue",
+                isPresented: Binding(
+                    get: { model.errorMessage != nil },
+                    set: { if !$0 { model.errorMessage = nil } }
+                )
+            ) {
                 Button("OK", role: .cancel) {
                     model.errorMessage = nil
                 }

@@ -1,4 +1,5 @@
 import Testing
+
 @testable import DebugTodo
 
 @Suite("InMemoryStorage Tests")
@@ -8,7 +9,7 @@ struct InMemoryStorageTests {
         let storage = InMemoryStorage()
         let items = [
             TodoItem(title: "Test 1", detail: "Detail 1"),
-            TodoItem(title: "Test 2", detail: "Detail 2")
+            TodoItem(title: "Test 2", detail: "Detail 2"),
         ]
 
         try storage.save(items)

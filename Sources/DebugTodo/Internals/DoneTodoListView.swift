@@ -7,9 +7,9 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     let repositorySettings: GitHubRepositorySettings?
     let service: GitHubService?
 
-#if os(iOS)
-    var editMode: EditMode = .inactive
-#endif
+    #if os(iOS)
+        var editMode: EditMode = .inactive
+    #endif
     var showDeleteAllAlert = false
     var selectedTodoIDs: Set<TodoItem.ID> = []
     var showReopenAlert = false
@@ -18,7 +18,10 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     // Child models
     var addEditModel: AddEditTodoModel<S, G>?
 
-    init(repository: TodoRepository<S, G>, repositorySettings: GitHubRepositorySettings? = nil, service: GitHubService? = nil) {
+    init(
+        repository: TodoRepository<S, G>, repositorySettings: GitHubRepositorySettings? = nil,
+        service: GitHubService? = nil
+    ) {
         self.repository = repository
         self.repositorySettings = repositorySettings
         self.service = service
@@ -63,7 +66,8 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     func reopenGitHubIssue(item: TodoItem) async throws {
         guard let service = service,
-              let issueNumber = item.gitHubIssueNumber else {
+            let issueNumber = item.gitHubIssueNumber
+        else {
             return
         }
 
@@ -129,33 +133,33 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
         }
         .navigationTitle("Done")
         #if os(iOS)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                if model.editMode == .active && !model.selectedTodoIDs.isEmpty {
-                    Button(role: .destructive) {
-                        model.deleteSelectedTodos()
-                    } label: {
-                        Label("Delete Selected", systemImage: "trash")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if model.editMode == .active && !model.selectedTodoIDs.isEmpty {
+                        Button(role: .destructive) {
+                            model.deleteSelectedTodos()
+                        } label: {
+                            Label("Delete Selected", systemImage: "trash")
+                        }
+                    } else {
+                        Button(role: .destructive) {
+                            model.showDeleteAllAlert = true
+                        } label: {
+                            Label("Delete All", systemImage: "trash")
+                        }
+                        .disabled(model.repository.doneTodos.isEmpty)
                     }
-                } else {
-                    Button(role: .destructive) {
-                        model.showDeleteAllAlert = true
-                    } label: {
-                        Label("Delete All", systemImage: "trash")
-                    }
-                    .disabled(model.repository.doneTodos.isEmpty)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    EditButton()
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                EditButton()
+            .environment(\.editMode, $model.editMode)
+            .onChange(of: model.editMode) { oldValue, newValue in
+                if newValue == .inactive {
+                    model.selectedTodoIDs.removeAll()
+                }
             }
-        }
-        .environment(\.editMode, $model.editMode)
-        .onChange(of: model.editMode) { oldValue, newValue in
-            if newValue == .inactive {
-                model.selectedTodoIDs.removeAll()
-            }
-        }
         #endif
         .alert("Delete All Done Todos", isPresented: $model.showDeleteAllAlert) {
             Button("Delete", role: .destructive) {

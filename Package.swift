@@ -9,13 +9,13 @@ let package = Package(
         .iOS(.v17),
         .macOS(.v14),
         .visionOS(.v1),
-        .macCatalyst(.v17)
+        .macCatalyst(.v17),
     ],
     products: [
         .library(
             name: "DebugTodo",
             targets: ["DebugTodo"]
-        ),
+        )
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.6.2")

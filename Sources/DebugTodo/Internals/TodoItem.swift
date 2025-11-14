@@ -26,9 +26,10 @@ public struct TodoItem: Identifiable, Codable, Equatable, Sendable {
     /// Extracts the issue number from the GitHub issue URL.
     public var gitHubIssueNumber: Int? {
         guard let urlString = gitHubIssueUrl,
-              let url = URL(string: urlString),
-              let lastComponent = url.pathComponents.last,
-              let number = Int(lastComponent) else {
+            let url = URL(string: urlString),
+            let lastComponent = url.pathComponents.last,
+            let number = Int(lastComponent)
+        else {
             return nil
         }
         return number

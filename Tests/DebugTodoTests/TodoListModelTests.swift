@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import DebugTodo
 
 @Suite("TodoListModel Tests")
@@ -8,7 +9,8 @@ struct TodoListModelTests {
 
     @Test("Initialize model with repository")
     func initialize() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = TodoListModel(repository: repository, service: nil)
 
         #expect(model.repository.activeTodos.isEmpty)
@@ -21,7 +23,8 @@ struct TodoListModelTests {
 
     @Test("Initialize model with GitHub service")
     func initializeWithService() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
         let model = TodoListModel(repository: repository, service: service)
 
@@ -187,7 +190,8 @@ struct TodoListModelTests {
 
     @Test("Create add edit model")
     func createAddEditModel() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
         let model = TodoListModel(repository: repository, service: service)
 
@@ -216,7 +220,8 @@ struct TodoListModelTests {
 
     @Test("Create done list model")
     func createDoneListModel() {
-        let repository = TodoRepository(storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
+        let repository = TodoRepository(
+            storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
         let model = TodoListModel(repository: repository, service: service)
 

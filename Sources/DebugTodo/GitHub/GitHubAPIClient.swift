@@ -131,14 +131,14 @@ actor GitHubAPIClient {
             return .forbidden
         case .notFound:
             return .repositoryNotFound
-        case let .badRequest(_, data):
+        case .badRequest(_, let data):
             if let errorResponse = try? JSONDecoder().decode(GitHubErrorResponse.self, from: data) {
                 if errorResponse.message.contains("validation") {
                     return .validationFailed(errorResponse.message)
                 }
             }
             return .unknownError(statusCode: 400, message: "Bad request")
-        case let .otherClientError(statusCode, _, data):
+        case .otherClientError(let statusCode, _, let data):
             if statusCode == 422 {
                 let errorResponse = try? JSONDecoder().decode(GitHubErrorResponse.self, from: data)
                 return .validationFailed(errorResponse?.message ?? "Validation failed")
@@ -148,7 +148,7 @@ actor GitHubAPIClient {
                 statusCode: statusCode,
                 message: errorResponse?.message ?? "Unknown error"
             )
-        case let .otherServerError(statusCode, _, data):
+        case .otherServerError(let statusCode, _, let data):
             let errorResponse = try? JSONDecoder().decode(GitHubErrorResponse.self, from: data)
             return .unknownError(
                 statusCode: statusCode,

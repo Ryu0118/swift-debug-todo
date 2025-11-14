@@ -64,13 +64,15 @@ public struct KeychainRepositorySettingsStorage: GitHubRepositorySettingsStorage
     public func save(_ settings: GitHubRepositorySettings) throws {
         try keychain.save(settings.owner, forKey: ownerKey)
         try keychain.save(settings.repo, forKey: repoKey)
-        try keychain.save(settings.showConfirmationAlert ? "true" : "false", forKey: showConfirmationAlertKey)
+        try keychain.save(
+            settings.showConfirmationAlert ? "true" : "false", forKey: showConfirmationAlertKey)
     }
 
     public func load() throws -> GitHubRepositorySettings {
         let owner = try keychain.load(forKey: ownerKey) ?? ""
         let repo = try keychain.load(forKey: repoKey) ?? ""
-        let showConfirmationAlert = (try? keychain.load(forKey: showConfirmationAlertKey)) != "false" // Default true
+        let showConfirmationAlert =
+            (try? keychain.load(forKey: showConfirmationAlertKey)) != "false"  // Default true
         return GitHubRepositorySettings(
             owner: owner,
             repo: repo,

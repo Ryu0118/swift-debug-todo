@@ -28,9 +28,9 @@ struct TodoRowView: View {
                     .imageScale(.large)
             }
             .buttonStyle(.plain)
-            .padding(8) // Expand tap area
-            .contentShape(Rectangle()) // Make entire padded area tappable
-            .padding(-8) // Remove visual padding while keeping tap area
+            .padding(8)  // Expand tap area
+            .contentShape(Rectangle())  // Make entire padded area tappable
+            .padding(-8)  // Remove visual padding while keeping tap area
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
@@ -42,7 +42,8 @@ struct TodoRowView: View {
                     if let issueNumber = model.item.gitHubIssueNumber {
                         Button {
                             if let urlString = model.item.gitHubIssueUrl,
-                               let url = URL(string: urlString) {
+                                let url = URL(string: urlString)
+                            {
                                 openURL(url)
                             }
                         } label: {

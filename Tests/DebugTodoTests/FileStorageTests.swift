@@ -1,5 +1,6 @@
-import Testing
 import Foundation
+import Testing
+
 @testable import DebugTodo
 
 @Suite("FileStorage Tests")
@@ -13,7 +14,7 @@ struct FileStorageTests {
 
         let items = [
             TodoItem(title: "Test 1", detail: "Detail 1"),
-            TodoItem(title: "Test 2", detail: "Detail 2")
+            TodoItem(title: "Test 2", detail: "Detail 2"),
         ]
 
         try storage.save(items)

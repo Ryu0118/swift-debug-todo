@@ -23,7 +23,7 @@ public struct KeychainStorage: Sendable {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
-            kSecValueData as String: data
+            kSecValueData as String: data,
         ]
 
         // Delete any existing item
@@ -46,7 +46,7 @@ public struct KeychainStorage: Sendable {
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
 
         var result: AnyObject?
@@ -61,7 +61,8 @@ public struct KeychainStorage: Sendable {
         }
 
         guard let data = result as? Data,
-              let string = String(data: data, encoding: .utf8) else {
+            let string = String(data: data, encoding: .utf8)
+        else {
             throw KeychainError.decodingFailed
         }
 
@@ -75,7 +76,7 @@ public struct KeychainStorage: Sendable {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
         ]
 
         let status = SecItemDelete(query as CFDictionary)
@@ -88,7 +89,7 @@ public struct KeychainStorage: Sendable {
     public func deleteAll() throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service
+            kSecAttrService as String: service,
         ]
 
         let status = SecItemDelete(query as CFDictionary)

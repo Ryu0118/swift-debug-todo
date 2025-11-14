@@ -1,5 +1,5 @@
-import SwiftUI
 import Logging
+import SwiftUI
 
 @MainActor
 @Observable
@@ -34,8 +34,10 @@ public struct GitHubSettingsView: View {
     public var body: some View {
         Form {
             Section {
-                SecureField("Personal Access Token", text: $model.service.credentials.personalAccessToken)
-                    .autocorrectionDisabled()
+                SecureField(
+                    "Personal Access Token", text: $model.service.credentials.personalAccessToken
+                )
+                .autocorrectionDisabled()
                 #if os(iOS) || os(visionOS)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.asciiCapable)
@@ -55,23 +57,25 @@ public struct GitHubSettingsView: View {
             } header: {
                 Text("Authentication")
             } footer: {
-                Text("Generate a Personal Access Token with 'repo' scope from GitHub Settings → Developer settings → Personal access tokens → Tokens (classic).")
+                Text(
+                    "Generate a Personal Access Token with 'repo' scope from GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)."
+                )
             }
 
             Section {
                 TextField("Owner", text: $model.service.repositorySettings.owner)
                     .autocorrectionDisabled()
-                #if os(iOS) || os(visionOS)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.asciiCapable)
-                #endif
+                    #if os(iOS) || os(visionOS)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.asciiCapable)
+                    #endif
 
                 TextField("Repository", text: $model.service.repositorySettings.repo)
                     .autocorrectionDisabled()
-                #if os(iOS) || os(visionOS)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.asciiCapable)
-                #endif
+                    #if os(iOS) || os(visionOS)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.asciiCapable)
+                    #endif
 
                 if model.service.repositorySettings.isValid {
                     HStack {
@@ -88,7 +92,9 @@ public struct GitHubSettingsView: View {
             }
 
             Section {
-                Toggle("Confirm Before Creating Issue", isOn: $model.service.repositorySettings.showConfirmationAlert)
+                Toggle(
+                    "Confirm Before Creating Issue",
+                    isOn: $model.service.repositorySettings.showConfirmationAlert)
             } header: {
                 Text("Options")
             } footer: {
@@ -103,10 +109,13 @@ public struct GitHubSettingsView: View {
             }
         }
         .navigationTitle("GitHub Settings")
-        .alert("Error", isPresented: Binding(
-            get: { model.errorMessage != nil },
-            set: { if !$0 { model.errorMessage = nil } }
-        )) {
+        .alert(
+            "Error",
+            isPresented: Binding(
+                get: { model.errorMessage != nil },
+                set: { if !$0 { model.errorMessage = nil } }
+            )
+        ) {
             Button("OK", role: .cancel) {
                 model.errorMessage = nil
             }

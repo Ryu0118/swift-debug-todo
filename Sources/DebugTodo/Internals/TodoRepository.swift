@@ -1,6 +1,6 @@
 import Foundation
-import Observation
 import Logging
+import Observation
 
 @Observable
 @MainActor
@@ -27,7 +27,10 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    func add(title: String, detail: String = "", createIssue: Bool = true, onIssueCreationError: ((Error) -> Void)? = nil) {
+    func add(
+        title: String, detail: String = "", createIssue: Bool = true,
+        onIssueCreationError: ((Error) -> Void)? = nil
+    ) {
         let item = TodoItem(title: title, detail: detail)
         items.append(item)
         saveItems()

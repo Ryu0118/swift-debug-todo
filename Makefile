@@ -100,6 +100,7 @@ format:
 		-name '*.swift' \
 		-not -path '*/.*' \
 		-not -path '*/.build/*' \
+		-not -name 'Makefile' \
 		-print0 \
 		| xargs -0 swift format --ignore-unparsable-files --in-place --recursive || true
 
