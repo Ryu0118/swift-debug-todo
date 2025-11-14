@@ -50,7 +50,9 @@ struct TodoListModelTests {
         #expect(model.toggledItemIDs.contains(item.id))
         // Item should still appear in displayed list with toggled state
         #expect(model.displayedActiveTodos.count == 1)
-        #expect(model.effectiveDoneState(for: item) == true)
+        // Get the current displayed item (from doneTodos now)
+        let displayedItem = model.displayedActiveTodos.first!
+        #expect(model.effectiveDoneState(for: displayedItem) == true)
     }
 
     @Test("Handle toggle with GitHub issue shows alert")
@@ -282,7 +284,8 @@ struct TodoListModelTests {
         #expect(model.effectiveDoneState(for: item) == false)
 
         model.handleToggle(item)
-        #expect(model.effectiveDoneState(for: item) == true)
+        let displayedItem = model.displayedActiveTodos.first!
+        #expect(model.effectiveDoneState(for: displayedItem) == true)
     }
 
     @Test("Handle delete hides item from display")
@@ -323,8 +326,10 @@ struct TodoListModelTests {
         // Repository should be updated
         #expect(repository.doneTodos.count == 1)
         #expect(repository.activeTodos.isEmpty)
+        // Get the displayed item (now from doneTodos)
+        let displayedItem = model.displayedActiveTodos.first!
         // Effective state should show as done
-        #expect(model.effectiveDoneState(for: item) == true)
+        #expect(model.effectiveDoneState(for: displayedItem) == true)
         // Item should be in toggled set
         #expect(model.toggledItemIDs.contains(item.id))
     }
@@ -346,16 +351,8 @@ struct TodoListModelTests {
         // Get the displayed item (which should still be showing)
         let displayedItem1 = model.displayedActiveTodos.first!
         #expect(displayedItem1.id == itemId)
-        // Item is now in doneTodos (isDone=true) but toggledItemIDs contains it,
-        // so effectiveDoneState flips it back: !true = false... wait, that's wrong.
-        // Actually, the item should LOOK done (checked) in the UI.
-        // displayedItem1 comes from doneTodos, so isDone=true
-        // toggledItemIDs contains it, so effective = !true = false... No!
-        // The logic is: we toggled an active item to done, it should show as done.
-        // effective = toggledItemIDs contains? !isDone : isDone
-        // effective = true? !true : true = false
-        // But we want it to show as DONE (checked). So effective should be true.
-        // The problem is the effectiveDoneState logic is wrong!
+        // Item is now in doneTodos (isDone=true), so effective state is true
+        #expect(model.effectiveDoneState(for: displayedItem1) == true)
         #expect(repository.doneTodos.count == 1)
 
         // Second toggle: done -> active (toggle the displayed item)
@@ -363,6 +360,8 @@ struct TodoListModelTests {
         #expect(model.displayedActiveTodos.count == 1)
         let displayedItem2 = model.displayedActiveTodos.first!
         #expect(displayedItem2.id == itemId)
+        // Item is now in activeTodos (isDone=false), so effective state is false
+        #expect(model.effectiveDoneState(for: displayedItem2) == false)
         #expect(repository.activeTodos.count == 1)
     }
 }

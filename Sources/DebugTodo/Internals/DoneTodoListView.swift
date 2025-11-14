@@ -44,9 +44,8 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     // Get the effective done state for display (considering in-memory toggles)
     func effectiveDoneState(for item: TodoItem) -> Bool {
-        if toggledItemIDs.contains(item.id) {
-            return !item.isDone  // Flip the state
-        }
+        // Simply return the item's current isDone state from repository
+        // The item displayed in the list already reflects the repository state
         return item.isDone
     }
 
