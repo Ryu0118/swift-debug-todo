@@ -365,17 +365,14 @@ struct TodoListModelTests {
 
     @Test("Toggled items preserve their position in the list")
     func toggledItemsPreservePosition() async throws {
-        let baseDate = Date()
-
-        // Create storage with pre-populated items
-        let first = TodoItem(title: "First", detail: "", isDone: false, createdAt: baseDate, updatedAt: baseDate)
-        let second = TodoItem(title: "Second", detail: "", isDone: false, createdAt: baseDate.addingTimeInterval(1), updatedAt: baseDate.addingTimeInterval(1))
-        let third = TodoItem(title: "Third", detail: "", isDone: false, createdAt: baseDate.addingTimeInterval(2), updatedAt: baseDate.addingTimeInterval(2))
-
         let storage = InMemoryStorage()
-        try await storage.save([first, second, third])
-
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+
+        // Add items through repository to ensure proper initialization
+        repository.add(title: "First", detail: "", createIssue: false)
+        repository.add(title: "Second", detail: "", createIssue: false)
+        repository.add(title: "Third", detail: "", createIssue: false)
+
         let model = TodoListModel(repository: repository, service: nil)
 
         model.loadActiveTodos()

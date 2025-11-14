@@ -68,10 +68,34 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         logger.debug("Updated issue #\(issueNumber) content")
     }
 
-    func addWithIssue() {
+    func addWithIssue() async {
+        // Validate GitHub settings
+        guard let service = service else {
+            errorMessage = "GitHub service is not configured"
+            return
+        }
+
+        let settings = service.repositorySettings
+        if settings.owner.isEmpty {
+            errorMessage = "GitHub owner is not configured"
+            return
+        }
+        if settings.repo.isEmpty {
+            errorMessage = "GitHub repository is not configured"
+            return
+        }
+        if settings.personalAccessToken.isEmpty {
+            errorMessage = "GitHub Personal Access Token is not configured"
+            return
+        }
+
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        repository.add(title: trimmedTitle, detail: detail, createIssue: true) { [self] error in
-            self.errorMessage = error.localizedDescription
+
+        return await withCheckedContinuation { continuation in
+            repository.add(title: trimmedTitle, detail: detail, createIssue: true) { [self] error in
+                self.errorMessage = error.localizedDescription
+                continuation.resume()
+            }
         }
     }
 
@@ -153,8 +177,13 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                     dismiss()
                 }
                 Button("Create Issue", role: .destructive) {
-                    model.addWithIssue()
-                    dismiss()
+                    Task {
+                        await model.addWithIssue()
+                        // Only dismiss if no error occurred
+                        if model.errorMessage == nil {
+                            dismiss()
+                        }
+                    }
                 }
             } message: {
                 Text("Do you want to create a GitHub issue for this todo?")

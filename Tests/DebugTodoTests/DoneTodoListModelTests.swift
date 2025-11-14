@@ -423,17 +423,19 @@ struct DoneTodoListModelTests {
 
     @Test("Toggled items preserve their position in done list")
     func toggledItemsPreservePositionInDoneList() async throws {
-        let baseDate = Date()
-
-        // Create storage with pre-populated done items
-        let first = TodoItem(title: "First", detail: "", isDone: true, createdAt: baseDate, updatedAt: baseDate)
-        let second = TodoItem(title: "Second", detail: "", isDone: true, createdAt: baseDate.addingTimeInterval(1), updatedAt: baseDate.addingTimeInterval(1))
-        let third = TodoItem(title: "Third", detail: "", isDone: true, createdAt: baseDate.addingTimeInterval(2), updatedAt: baseDate.addingTimeInterval(2))
-
         let storage = InMemoryStorage()
-        try await storage.save([first, second, third])
-
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
+
+        // Add items and mark them as done through repository
+        repository.add(title: "First", detail: "", createIssue: false)
+        repository.add(title: "Second", detail: "", createIssue: false)
+        repository.add(title: "Third", detail: "", createIssue: false)
+
+        // Mark all as done
+        for item in repository.activeTodos {
+            repository.toggleDone(item)
+        }
+
         let model = DoneTodoListModel(repository: repository)
 
         model.loadDoneTodos()
