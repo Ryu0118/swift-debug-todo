@@ -32,7 +32,7 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
     ) async throws {
         let item = TodoItem(title: title, detail: detail)
         items.append(item)
-        Task { await saveItems() }
+        await saveItems()
 
         // Trigger GitHub issue creation if enabled
         if createIssue {
@@ -58,7 +58,7 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
     func addWithoutIssue(title: String, detail: String = "") {
         let item = TodoItem(title: title, detail: detail)
         items.append(item)
-        saveItems()
+        Task { await saveItems() }
     }
 
     /// Manually creates a GitHub issue for the given todo item.
