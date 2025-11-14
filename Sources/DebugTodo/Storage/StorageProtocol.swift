@@ -6,16 +6,16 @@ public protocol Storage: Sendable {
     ///
     /// - Parameter items: The array of todo items to save.
     /// - Throws: An error if the save operation fails.
-    func save(_ items: [TodoItem]) throws
+    func save(_ items: [TodoItem]) async throws
 
     /// Loads todo items from storage.
     ///
     /// - Returns: An array of todo items.
     /// - Throws: An error if the load operation fails.
-    func load() throws -> [TodoItem]
+    func load() async throws -> [TodoItem]
 
     /// Deletes all todo items from storage.
     ///
     /// - Throws: An error if the delete operation fails.
-    func delete() throws
+    func delete() async throws
 }
