@@ -439,7 +439,7 @@ struct DoneTodoListModelTests {
         model.loadDoneTodos()
         let items = model.displayedDoneTodos
 
-        // Verify initial order (newest updatedAt first)
+        // Verify initial order (newest createdAt first)
         #expect(items.count == 3)
         #expect(items[0].title == "Third")
         #expect(items[1].title == "Second")

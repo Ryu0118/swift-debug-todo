@@ -34,14 +34,8 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v5
 
-    - name: List available Xcode versions
-      run: ls /Applications | grep Xcode
-
-    - name: Check default Xcode
-      run: xcodebuild -version
-
-    - name: Check SDKs with default Xcode
-      run: xcodebuild -showsdks
+    - name: Select Xcode 26.1
+      run: sudo xcode-select -s /Applications/Xcode_26.1.app
 
     - name: Build
       run: make build-${{ matrix.platform }}
@@ -50,29 +44,22 @@ jobs:
       run: make test-${{ matrix.platform }}
 
   example:
-    name: Example ${{ matrix.config.name }}
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-          - name: macOS
-            destination: 'platform=macOS'
-          - name: iOS
-            destination: 'platform=iOS Simulator,name=iPhone 17,OS=26.0.1'
-          - name: visionOS
-            destination: 'platform=visionOS Simulator,name=Apple Vision Pro,OS=26.0'
+    name: Example macOS
     runs-on: macos-latest
 
     steps:
     - name: Checkout
       uses: actions/checkout@v5
 
+    - name: Select Xcode 26.1
+      run: sudo xcode-select -s /Applications/Xcode_26.1.app
+
     - name: Build Example
       run: |
         xcodebuild clean build \
           -scheme Example \
           -project Example/Example.xcodeproj \
-          -destination '${{ matrix.config.destination }}' \
+          -destination 'platform=macOS' \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO

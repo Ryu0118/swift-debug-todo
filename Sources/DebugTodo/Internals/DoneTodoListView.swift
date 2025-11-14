@@ -37,7 +37,7 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
                 (item.isDone && !deletedIDs.contains(item.id)) ||
                 (!item.isDone && toggledIDs.contains(item.id) && !deletedIDs.contains(item.id))
             }
-            .sorted { $0.updatedAt > $1.updatedAt }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     // Check if an item's done state has been toggled in-memory
