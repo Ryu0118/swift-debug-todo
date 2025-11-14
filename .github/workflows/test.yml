@@ -42,3 +42,29 @@ jobs:
 
     - name: Test
       run: make test-${{ matrix.platform }}
+
+  example:
+    name: Example ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos, ios, visionos]
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Select Xcode 26
+      run: sudo xcode-select -s /Applications/Xcode_26.1.app
+
+    - name: Build Example
+      working-directory: Example
+      run: |
+        xcodebuild clean build \
+          -scheme Example \
+          -project Example.xcodeproj \
+          -destination 'generic/platform=${{ matrix.platform == 'macos' && 'macOS' || matrix.platform == 'ios' && 'iOS' || 'visionOS' }}' \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
