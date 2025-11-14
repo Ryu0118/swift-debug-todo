@@ -6,38 +6,40 @@ import Testing
 @Suite("FileStorage Tests")
 struct FileStorageTests {
     @Test("Save and load items")
-    func saveAndLoad() throws {
+    func saveAndLoad() async throws {
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test_saveAndLoad_\(UUID().uuidString).json")
         let storage = FileStorage(fileURL: fileURL)
-        defer { try? storage.delete() }
 
         let items = [
             TodoItem(title: "Test 1", detail: "Detail 1"),
             TodoItem(title: "Test 2", detail: "Detail 2"),
         ]
 
-        try storage.save(items)
-        let loadedItems = try storage.load()
+        try await storage.save(items)
+        let loadedItems = try await storage.load()
 
         #expect(loadedItems.count == 2)
         #expect(loadedItems[0].title == "Test 1")
         #expect(loadedItems[1].title == "Test 2")
+
+        try await storage.delete()
     }
 
     @Test("Load empty storage")
-    func loadEmptyStorage() throws {
+    func loadEmptyStorage() async throws {
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test_loadEmpty_\(UUID().uuidString).json")
         let storage = FileStorage(fileURL: fileURL)
-        defer { try? storage.delete() }
 
-        let items = try storage.load()
+        let items = try await storage.load()
         #expect(items.isEmpty)
+
+        try await storage.delete()
     }
 
     @Test("Delete all items")
-    func delete() throws {
+    func delete() async throws {
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test_delete_\(UUID().uuidString).json")
         let storage = FileStorage(fileURL: fileURL)
@@ -45,15 +47,15 @@ struct FileStorageTests {
             TodoItem(title: "Test 1", detail: "Detail 1")
         ]
 
-        try storage.save(items)
-        try storage.delete()
-        let loadedItems = try storage.load()
+        try await storage.save(items)
+        try await storage.delete()
+        let loadedItems = try await storage.load()
 
         #expect(loadedItems.isEmpty)
     }
 
     @Test("Persistence across instances")
-    func persistenceAcrossInstances() throws {
+    func persistenceAcrossInstances() async throws {
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test_persistence_\(UUID().uuidString).json")
         let storage = FileStorage(fileURL: fileURL)
@@ -61,23 +63,22 @@ struct FileStorageTests {
             TodoItem(title: "Persistent", detail: "Should persist")
         ]
 
-        try storage.save(items)
+        try await storage.save(items)
 
         let newStorage = FileStorage(fileURL: fileURL)
-        let loadedItems = try newStorage.load()
+        let loadedItems = try await newStorage.load()
 
         #expect(loadedItems.count == 1)
         #expect(loadedItems[0].title == "Persistent")
 
-        try newStorage.delete()
+        try await newStorage.delete()
     }
 
     @Test("Overwrite existing data")
-    func overwriteData() throws {
+    func overwriteData() async throws {
         let fileURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("test_overwrite_\(UUID().uuidString).json")
         let storage = FileStorage(fileURL: fileURL)
-        defer { try? storage.delete() }
 
         let firstItems = [
             TodoItem(title: "First", detail: "First detail")
@@ -86,11 +87,13 @@ struct FileStorageTests {
             TodoItem(title: "Second", detail: "Second detail")
         ]
 
-        try storage.save(firstItems)
-        try storage.save(secondItems)
-        let loadedItems = try storage.load()
+        try await storage.save(firstItems)
+        try await storage.save(secondItems)
+        let loadedItems = try await storage.load()
 
         #expect(loadedItems.count == 1)
         #expect(loadedItems[0].title == "Second")
+
+        try await storage.delete()
     }
 }

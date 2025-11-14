@@ -4,9 +4,9 @@ import Observation
 
 /// Protocol for storing GitHub access tokens.
 public protocol GitHubTokenStorage: Sendable {
-    func saveToken(_ token: String) throws
-    func loadToken() throws -> String?
-    func deleteToken() throws
+    func saveToken(_ token: String) async throws
+    func loadToken() async throws -> String?
+    func deleteToken() async throws
 }
 
 /// Keychain-based token storage (recommended for security).
@@ -22,16 +22,16 @@ public struct KeychainTokenStorage: GitHubTokenStorage {
         self.key = key
     }
 
-    public func saveToken(_ token: String) throws {
-        try keychain.save(token, forKey: key)
+    public func saveToken(_ token: String) async throws {
+        try await keychain.save(token, forKey: key)
     }
 
-    public func loadToken() throws -> String? {
-        try keychain.load(forKey: key)
+    public func loadToken() async throws -> String? {
+        try await keychain.load(forKey: key)
     }
 
-    public func deleteToken() throws {
-        try keychain.delete(forKey: key)
+    public func deleteToken() async throws {
+        try await keychain.delete(forKey: key)
     }
 }
 
@@ -53,24 +53,28 @@ public final class GitHubCredentials {
         self.storage = storage
 
         // Load token from storage
-        do {
-            if let token = try storage.loadToken() {
-                self.personalAccessToken = token
-                self.accessToken = token
-                self.isAuthenticated = true
+        Task {
+            do {
+                if let token = try await storage.loadToken() {
+                    await MainActor.run {
+                        self.personalAccessToken = token
+                        self.accessToken = token
+                        self.isAuthenticated = true
+                    }
+                }
+            } catch {
+                logger.error("Failed to load token from storage", metadata: ["error": "\(error)"])
             }
-        } catch {
-            logger.error("Failed to load token from storage", metadata: ["error": "\(error)"])
         }
     }
 
     /// Saves the current Personal Access Token to Keychain.
-    public func saveToken() throws {
+    public func saveToken() async throws {
         guard !personalAccessToken.isEmpty else {
             throw GitHubAuthError.emptyToken
         }
 
-        try storage.saveToken(personalAccessToken)
+        try await storage.saveToken(personalAccessToken)
         accessToken = personalAccessToken
         isAuthenticated = true
     }
@@ -80,10 +84,12 @@ public final class GitHubCredentials {
         personalAccessToken = ""
         accessToken = nil
         isAuthenticated = false
-        do {
-            try storage.deleteToken()
-        } catch {
-            logger.error("Failed to delete token", metadata: ["error": "\(error)"])
+        Task {
+            do {
+                try await storage.deleteToken()
+            } catch {
+                logger.error("Failed to delete token", metadata: ["error": "\(error)"])
+            }
         }
     }
 }

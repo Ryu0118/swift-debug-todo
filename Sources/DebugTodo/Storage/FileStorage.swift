@@ -15,7 +15,7 @@ public final class FileStorage: Storage, Sendable {
     ///
     /// - Parameter items: The array of todo items to save.
     /// - Throws: An error if encoding or writing to the file fails.
-    public func save(_ items: [TodoItem]) throws {
+    public func save(_ items: [TodoItem]) async throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(items)
@@ -26,7 +26,7 @@ public final class FileStorage: Storage, Sendable {
     ///
     /// - Returns: An array of todo items, or an empty array if the file doesn't exist.
     /// - Throws: An error if reading or decoding the file fails.
-    public func load() throws -> [TodoItem] {
+    public func load() async throws -> [TodoItem] {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return []
         }
@@ -38,7 +38,7 @@ public final class FileStorage: Storage, Sendable {
     /// Deletes the file containing todo items.
     ///
     /// - Throws: An error if deleting the file fails.
-    public func delete() throws {
+    public func delete() async throws {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return
         }

@@ -2,8 +2,7 @@ import Foundation
 import Observation
 
 /// Repository settings for GitHub integration.
-@Observable
-public final class GitHubRepositorySettings {
+public struct GitHubRepositorySettings: Sendable {
     /// The repository owner (username or organization).
     public var owner: String
 
@@ -38,8 +37,8 @@ public final class GitHubRepositorySettings {
 
 /// Storage for GitHub repository settings.
 public protocol GitHubRepositorySettingsStorage: Sendable {
-    func save(_ settings: GitHubRepositorySettings) throws
-    func load() throws -> GitHubRepositorySettings
+    func save(_ settings: GitHubRepositorySettings) async throws
+    func load() async throws -> GitHubRepositorySettings
 }
 
 /// Keychain-based repository settings storage (recommended for security).
@@ -61,18 +60,18 @@ public struct KeychainRepositorySettingsStorage: GitHubRepositorySettingsStorage
         self.showConfirmationAlertKey = showConfirmationAlertKey
     }
 
-    public func save(_ settings: GitHubRepositorySettings) throws {
-        try keychain.save(settings.owner, forKey: ownerKey)
-        try keychain.save(settings.repo, forKey: repoKey)
-        try keychain.save(
+    public func save(_ settings: GitHubRepositorySettings) async throws {
+        try await keychain.save(settings.owner, forKey: ownerKey)
+        try await keychain.save(settings.repo, forKey: repoKey)
+        try await keychain.save(
             settings.showConfirmationAlert ? "true" : "false", forKey: showConfirmationAlertKey)
     }
 
-    public func load() throws -> GitHubRepositorySettings {
-        let owner = try keychain.load(forKey: ownerKey) ?? ""
-        let repo = try keychain.load(forKey: repoKey) ?? ""
+    public func load() async throws -> GitHubRepositorySettings {
+        let owner = try await keychain.load(forKey: ownerKey) ?? ""
+        let repo = try await keychain.load(forKey: repoKey) ?? ""
         let showConfirmationAlert =
-            (try? keychain.load(forKey: showConfirmationAlertKey)) != "false"  // Default true
+            (try? await keychain.load(forKey: showConfirmationAlertKey)) != "false"  // Default true
         return GitHubRepositorySettings(
             owner: owner,
             repo: repo,
