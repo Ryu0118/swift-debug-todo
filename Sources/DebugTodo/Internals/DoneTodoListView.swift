@@ -30,11 +30,13 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         let toggledIDs = toggledItemIDs
         let deletedIDs = deletedItemIDs
 
-        return allItems
+        return
+            allItems
             .filter { item in
                 // Include if: (done and not deleted) OR (active and toggled and not deleted)
-                (item.isDone && !deletedIDs.contains(item.id)) ||
-                (!item.isDone && toggledIDs.contains(item.id) && !deletedIDs.contains(item.id))
+                (item.isDone && !deletedIDs.contains(item.id))
+                    || (!item.isDone && toggledIDs.contains(item.id)
+                        && !deletedIDs.contains(item.id))
             }
             .sorted { $0.createdAt > $1.createdAt }
     }
@@ -194,10 +196,11 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .leading).combined(with: .opacity),
-                            removal: .move(edge: .trailing).combined(with: .opacity)
-                        ))
+                        .transition(
+                            .asymmetric(
+                                insertion: .move(edge: .leading).combined(with: .opacity),
+                                removal: .move(edge: .trailing).combined(with: .opacity)
+                            ))
                     }
                     .onDelete { indexSet in
                         Task {

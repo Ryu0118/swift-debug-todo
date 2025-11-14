@@ -32,11 +32,13 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         let toggledIDs = toggledItemIDs
         let deletedIDs = deletedItemIDs
 
-        return allItems
+        return
+            allItems
             .filter { item in
                 // Include if: (active and not deleted) OR (done and toggled and not deleted)
-                (!item.isDone && !deletedIDs.contains(item.id)) ||
-                (item.isDone && toggledIDs.contains(item.id) && !deletedIDs.contains(item.id))
+                (!item.isDone && !deletedIDs.contains(item.id))
+                    || (item.isDone && toggledIDs.contains(item.id)
+                        && !deletedIDs.contains(item.id))
             }
             .sorted { $0.createdAt > $1.createdAt }
     }
@@ -193,7 +195,6 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             editingItem: editingItem
         )
     }
-
 
 }
 
@@ -390,10 +391,11 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .leading).combined(with: .opacity),
-                            removal: .move(edge: .trailing).combined(with: .opacity)
-                        ))
+                        .transition(
+                            .asymmetric(
+                                insertion: .move(edge: .leading).combined(with: .opacity),
+                                removal: .move(edge: .trailing).combined(with: .opacity)
+                            ))
                     }
                     .onDelete { indexSet in
                         _ = Task {
@@ -410,55 +412,55 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
 
     public var body: some View {
         contentView
-        .task {
-            await model.loadActiveTodos()
-        }
-        .refreshable {
-            await model.refresh()
-        }
-        .toolbar {
-            toolbarContent
-        }
-        .sheet(isPresented: $model.isShowingAddView) {
-            AddEditTodoView(model: model.createAddEditModel())
-        }
-        .alert(
-            model.pendingToggleItem?.isDone == true
-                ? "Reopen GitHub Issue?" : "Close GitHub Issue?",
-            isPresented: $model.showStateChangeAlert
-        ) {
-            toggleAlertButtons
-        } message: {
-            if let item = model.pendingToggleItem {
-                if item.isDone {
-                    Text("This will reopen the linked GitHub issue.")
-                } else {
-                    Text("This will close the linked GitHub issue. Choose a reason:")
+            .task {
+                await model.loadActiveTodos()
+            }
+            .refreshable {
+                await model.refresh()
+            }
+            .toolbar {
+                toolbarContent
+            }
+            .sheet(isPresented: $model.isShowingAddView) {
+                AddEditTodoView(model: model.createAddEditModel())
+            }
+            .alert(
+                model.pendingToggleItem?.isDone == true
+                    ? "Reopen GitHub Issue?" : "Close GitHub Issue?",
+                isPresented: $model.showStateChangeAlert
+            ) {
+                toggleAlertButtons
+            } message: {
+                if let item = model.pendingToggleItem {
+                    if item.isDone {
+                        Text("This will reopen the linked GitHub issue.")
+                    } else {
+                        Text("This will close the linked GitHub issue. Choose a reason:")
+                    }
                 }
             }
-        }
-        .alert("Delete Todo?", isPresented: $model.showDeleteAlert) {
-            deleteAlertButtons
-        } message: {
-            Text("Do you want to close the linked GitHub issue? Choose a reason:")
-        }
-        #if os(iOS)
-            .environment(\.editMode, $model.editMode)
-        #endif
+            .alert("Delete Todo?", isPresented: $model.showDeleteAlert) {
+                deleteAlertButtons
+            } message: {
+                Text("Do you want to close the linked GitHub issue? Choose a reason:")
+            }
+            #if os(iOS)
+                .environment(\.editMode, $model.editMode)
+            #endif
     }
 }
 
 @MainActor
 private struct TodoListToolbarContent<S: Storage, G: GitHubIssueCreatorProtocol>: ToolbarContent {
     let model: TodoListModel<S, G>
-    
+
     var body: some ToolbarContent {
         #if os(iOS)
-        ToolbarItem(placement: .topBarLeading) {
-            EditButton()
-        }
+            ToolbarItem(placement: .topBarLeading) {
+                EditButton()
+            }
         #endif
-        
+
         if let service = model.service {
             ToolbarItem(placement: .primaryAction) {
                 NavigationLink {
@@ -467,12 +469,12 @@ private struct TodoListToolbarContent<S: Storage, G: GitHubIssueCreatorProtocol>
                     Image(systemName: "gearshape")
                 }
             }
-            
+
             if #available(iOS 26.0, macOS 26.0, *) {
                 ToolbarSpacer(placement: .primaryAction)
             }
         }
-        
+
         ToolbarItem(placement: .primaryAction) {
             NavigationLink {
                 DoneTodoListView(model: model.doneListModel)
@@ -480,7 +482,7 @@ private struct TodoListToolbarContent<S: Storage, G: GitHubIssueCreatorProtocol>
                 Image(systemName: "checkmark.circle")
             }
         }
-        
+
         ToolbarItem(placement: .primaryAction) {
             Button {
                 model.isShowingAddView = true

@@ -63,7 +63,8 @@ struct TodoListModelTests {
 
         await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(
+            for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
         await model.handleToggle(updatedItem)
@@ -81,7 +82,8 @@ struct TodoListModelTests {
 
         await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(
+            for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
         model.pendingToggleItem = updatedItem
@@ -99,7 +101,8 @@ struct TodoListModelTests {
 
         await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(
+            for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
         model.pendingToggleItem = updatedItem
@@ -132,7 +135,8 @@ struct TodoListModelTests {
 
         await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(
+            for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
         await model.handleDelete(updatedItem)
@@ -150,7 +154,8 @@ struct TodoListModelTests {
 
         await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(
+            for: item.id, url: "https://github.com/test/repo/issues/1")
         await repository.toggleDone(item)
         let doneItem = repository.doneTodos.first!
 
@@ -168,7 +173,8 @@ struct TodoListModelTests {
 
         await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(
+            for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
         model.pendingDeleteItem = updatedItem
@@ -186,7 +192,8 @@ struct TodoListModelTests {
 
         await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(
+            for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = repository.activeTodos.first!
 
         model.pendingDeleteItem = updatedItem

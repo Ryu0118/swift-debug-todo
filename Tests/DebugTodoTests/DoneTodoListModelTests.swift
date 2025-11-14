@@ -64,7 +64,6 @@ struct DoneTodoListModelTests {
         #expect(repository.doneTodos.isEmpty)
     }
 
-
     @Test("Handle reopen without GitHub issue")
     func handleReopenWithoutGitHubIssue() async {
         let storage = InMemoryStorage()
@@ -99,7 +98,8 @@ struct DoneTodoListModelTests {
 
         await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(
+            for: item.id, url: "https://github.com/test/repo/issues/1")
         await repository.toggleDone(item)
 
         let doneItem = repository.doneTodos.first!
@@ -118,7 +118,8 @@ struct DoneTodoListModelTests {
 
         await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(
+            for: item.id, url: "https://github.com/test/repo/issues/1")
         await repository.toggleDone(item)
 
         let doneItem = repository.doneTodos.first!
@@ -138,7 +139,8 @@ struct DoneTodoListModelTests {
 
         await repository.addWithoutIssue(title: "Test", detail: "")
         let item = repository.activeTodos.first!
-        await repository.updateGitHubIssueUrl(for: item.id, url: "https://github.com/test/repo/issues/1")
+        await repository.updateGitHubIssueUrl(
+            for: item.id, url: "https://github.com/test/repo/issues/1")
         await repository.toggleDone(item)
 
         let doneItem = repository.doneTodos.first!
@@ -149,7 +151,6 @@ struct DoneTodoListModelTests {
         #expect(repository.activeTodos.count == 1)
         #expect(repository.doneTodos.isEmpty)
     }
-
 
     @Test("Show delete all alert flag can be toggled")
     func showDeleteAllAlertCanBeToggled() {
