@@ -40,6 +40,9 @@ jobs:
     - name: Check available SDKs
       run: xcodebuild -showsdks
 
+    - name: List available simulators
+      run: xcrun simctl list devices available
+
     - name: Build
       run: make build-${{ matrix.platform }}
 

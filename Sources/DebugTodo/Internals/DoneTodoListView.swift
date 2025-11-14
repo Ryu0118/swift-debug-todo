@@ -27,9 +27,19 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     // In-memory cache of all done todos at the time of view appearance
     private var cachedDoneTodos: [TodoItem] = []
 
-    // Computed property to get displayed done todos (excluding deleted)
+    // In-memory cache of toggled items (items that have been toggled but not yet persisted)
+    private var toggledItems: [TodoItem.ID: TodoItem] = [:]
+
+    // Computed property to get displayed done todos (excluding deleted, including toggled items)
     var displayedDoneTodos: [TodoItem] {
-        cachedDoneTodos.filter { !deletedItemIDs.contains($0.id) }
+        var items = cachedDoneTodos.filter { !deletedItemIDs.contains($0.id) && !toggledItemIDs.contains($0.id) }
+        // Add toggled items that are now "done" (were active, now checked)
+        for (id, item) in toggledItems {
+            if !deletedItemIDs.contains(id) && !item.isDone {
+                items.append(item)
+            }
+        }
+        return items
     }
 
     // Check if an item's done state has been toggled in-memory
@@ -51,6 +61,7 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         toggledItemIDs.removeAll()
         deletedItemIDs.removeAll()
         selectedTodoIDs.removeAll()
+        toggledItems.removeAll()
     }
 
     func refresh() async {
@@ -99,8 +110,10 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             // Toggle the in-memory state
             if toggledItemIDs.contains(item.id) {
                 toggledItemIDs.remove(item.id)
+                toggledItems.removeValue(forKey: item.id)
             } else {
                 toggledItemIDs.insert(item.id)
+                toggledItems[item.id] = item
             }
         }
     }
@@ -112,8 +125,10 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         // Toggle the in-memory state
         if toggledItemIDs.contains(item.id) {
             toggledItemIDs.remove(item.id)
+            toggledItems.removeValue(forKey: item.id)
         } else {
             toggledItemIDs.insert(item.id)
+            toggledItems[item.id] = item
         }
         pendingReopenItem = nil
     }
@@ -125,8 +140,10 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         // Toggle the in-memory state
         if toggledItemIDs.contains(item.id) {
             toggledItemIDs.remove(item.id)
+            toggledItems.removeValue(forKey: item.id)
         } else {
             toggledItemIDs.insert(item.id)
+            toggledItems[item.id] = item
         }
         pendingReopenItem = nil
     }
