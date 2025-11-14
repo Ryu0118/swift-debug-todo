@@ -1,6 +1,6 @@
 import Foundation
-import os
 import Testing
+import os
 
 @testable import DebugTodo
 
