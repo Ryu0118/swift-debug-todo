@@ -26,15 +26,16 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     // Computed property to get displayed active todos
     var displayedActiveTodos: [TodoItem] {
-        // Get current active items from repository (not toggled)
-        var items = repository.activeTodos.filter { !deletedItemIDs.contains($0.id) }
+        // Combine all items and filter/sort appropriately
+        let allItems = repository.items
 
-        // Add toggled items that are now in doneTodos but should still show in active list
-        let toggledDoneItems = repository.doneTodos.filter {
-            toggledItemIDs.contains($0.id) && !deletedItemIDs.contains($0.id)
-        }
-
-        return items + toggledDoneItems
+        return allItems
+            .filter { item in
+                // Include if: (active and not deleted) OR (done and toggled and not deleted)
+                (!item.isDone && !deletedItemIDs.contains(item.id)) ||
+                (item.isDone && toggledItemIDs.contains(item.id) && !deletedItemIDs.contains(item.id))
+            }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     // Check if an item's done state has been toggled in-memory
