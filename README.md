@@ -69,9 +69,9 @@ Implement the `Storage` protocol to create your own storage backend:
 
 ```swift
 public protocol Storage: Sendable {
-    func save(_ items: [TodoItem]) throws
-    func load() throws -> [TodoItem]
-    func delete() throws
+    func save(_ items: [TodoItem]) async throws
+    func load() async throws -> [TodoItem]
+    func delete() async throws
 }
 ```
 
@@ -85,9 +85,9 @@ Implement `GitHubTokenStorage` for custom token persistence:
 
 ```swift
 public protocol GitHubTokenStorage: Sendable {
-    func saveToken(_ token: String) throws
-    func loadToken() throws -> String?
-    func deleteToken() throws
+    func saveToken(_ token: String) async throws
+    func loadToken() async throws -> String?
+    func deleteToken() async throws
 }
 ```
 
@@ -97,8 +97,8 @@ Implement `GitHubRepositorySettingsStorage` for custom settings persistence:
 
 ```swift
 public protocol GitHubRepositorySettingsStorage: Sendable {
-    func save(_ settings: GitHubRepositorySettings) throws
-    func load() throws -> GitHubRepositorySettings
+    func save(_ settings: GitHubRepositorySettings) async throws
+    func load() async throws -> GitHubRepositorySettings
 }
 ```
 

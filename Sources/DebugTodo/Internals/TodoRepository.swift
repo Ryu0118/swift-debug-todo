@@ -14,7 +14,10 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
     init(storage: S, issueCreator: G) {
         self.storage = storage
         self.issueCreator = issueCreator
-        Task { await loadItems() }
+    }
+
+    func loadFromStorage() async {
+        await loadItems()
     }
 
     var activeTodos: [TodoItem] {
@@ -28,31 +31,37 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
     }
 
     func add(
-        title: String, detail: String = "", createIssue: Bool = true,
-        onIssueCreationError: ((Error) -> Void)? = nil
-    ) {
+        title: String, detail: String = "", createIssue: Bool = true
+    ) async throws {
         let item = TodoItem(title: title, detail: detail)
         items.append(item)
-        Task { await saveItems() }
+        await saveItems()
 
         // Trigger GitHub issue creation if enabled
         if createIssue {
-            Task {
-                do {
-                    let issue = try await issueCreator.onTodoCreated(item)
-                    lastCreatedIssue = issue
-                    if let issue = issue {
-                        updateGitHubIssueUrl(for: item.id, url: issue.htmlUrl)
-                    }
-                } catch {
-                    lastError = error
-                    logger.error("Failed to create GitHub issue", metadata: ["error": "\(error)"])
-                    await MainActor.run {
-                        onIssueCreationError?(error)
-                    }
+            do {
+                let issue = try await issueCreator.onTodoCreated(item)
+                lastCreatedIssue = issue
+                if let issue = issue {
+                    await updateGitHubIssueUrl(for: item.id, url: issue.htmlUrl)
                 }
+            } catch {
+                lastError = error
+                logger.error("Failed to create GitHub issue", metadata: ["error": "\(error)"])
+                throw error
             }
         }
+    }
+
+    /// Adds a new todo item without creating a GitHub issue.
+    ///
+    /// - Parameters:
+    ///   - title: The title of the todo.
+    ///   - detail: Optional detail text.
+    func addWithoutIssue(title: String, detail: String = "") async {
+        let item = TodoItem(title: title, detail: detail)
+        items.append(item)
+        await saveItems()
     }
 
     /// Manually creates a GitHub issue for the given todo item.
@@ -65,7 +74,7 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
             let issue = try await issueCreator.createIssue(for: item)
             lastCreatedIssue = issue
             if let issue = issue {
-                updateGitHubIssueUrl(for: item.id, url: issue.htmlUrl)
+                await updateGitHubIssueUrl(for: item.id, url: issue.htmlUrl)
             }
             return issue
         } catch {
@@ -79,42 +88,42 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
     /// - Parameters:
     ///   - id: The ID of the todo item.
     ///   - url: The URL of the GitHub issue.
-    func updateGitHubIssueUrl(for id: UUID, url: String) {
+    func updateGitHubIssueUrl(for id: UUID, url: String) async {
         guard let index = items.firstIndex(where: { $0.id == id }) else {
             return
         }
         items[index].gitHubIssueUrl = url
-        Task { await saveItems() }
+        await saveItems()
     }
 
-    func update(_ item: TodoItem) {
+    func update(_ item: TodoItem) async {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else {
             return
         }
         var updatedItem = item
         updatedItem.updatedAt = Date()
         items[index] = updatedItem
-        Task { await saveItems() }
+        await saveItems()
     }
 
-    func delete(_ item: TodoItem) {
+    func delete(_ item: TodoItem) async {
         items.removeAll { $0.id == item.id }
-        Task { await saveItems() }
+        await saveItems()
     }
 
-    func delete(at offsets: IndexSet, from todos: [TodoItem]) {
+    func delete(at offsets: IndexSet, from todos: [TodoItem]) async {
         let idsToDelete = offsets.map { todos[$0].id }
         items.removeAll { idsToDelete.contains($0.id) }
-        Task { await saveItems() }
+        await saveItems()
     }
 
-    func toggleDone(_ item: TodoItem) {
+    func toggleDone(_ item: TodoItem) async {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else {
             return
         }
         items[index].isDone.toggle()
         items[index].updatedAt = Date()
-        Task { await saveItems() }
+        await saveItems()
     }
 
     private func loadItems() async {

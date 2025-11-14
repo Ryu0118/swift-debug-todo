@@ -7,11 +7,11 @@ import Testing
 @MainActor
 struct TodoRepositoryTests {
     @Test("Add new todo item")
-    func addTodo() {
+    func addTodo() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Test Todo", detail: "Test Detail")
+        await repository.addWithoutIssue(title: "Test Todo", detail: "Test Detail")
 
         #expect(repository.items.count == 1)
         #expect(repository.items[0].title == "Test Todo")
@@ -20,110 +20,106 @@ struct TodoRepositoryTests {
     }
 
     @Test("Update existing todo item")
-    func updateTodo() {
+    func updateTodo() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Original", detail: "Original detail")
+        await repository.addWithoutIssue(title: "Original", detail: "Original detail")
         var item = repository.items[0]
         item.title = "Updated"
         item.detail = "Updated detail"
 
-        repository.update(item)
+        await repository.update(item)
 
         #expect(repository.items[0].title == "Updated")
         #expect(repository.items[0].detail == "Updated detail")
     }
 
     @Test("Delete todo item")
-    func deleteTodo() {
+    func deleteTodo() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "To Delete", detail: "")
+        await repository.addWithoutIssue(title: "To Delete", detail: "")
         let item = repository.items[0]
 
-        repository.delete(item)
+        await repository.delete(item)
 
         #expect(repository.items.isEmpty)
     }
 
     @Test("Toggle todo done status")
-    func toggleDone() {
+    func toggleDone() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Toggle Test", detail: "")
+        await repository.addWithoutIssue(title: "Toggle Test", detail: "")
         let item = repository.items[0]
 
-        repository.toggleDone(item)
+        await repository.toggleDone(item)
         #expect(repository.items[0].isDone == true)
 
-        repository.toggleDone(repository.items[0])
+        await repository.toggleDone(repository.items[0])
         #expect(repository.items[0].isDone == false)
     }
 
     @Test("Active todos filter")
-    func activeTodos() {
+    func activeTodos() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Active 1", detail: "")
-        repository.add(title: "Active 2", detail: "")
-        repository.add(title: "Done 1", detail: "")
+        await repository.addWithoutIssue(title: "Active 1", detail: "")
+        await repository.addWithoutIssue(title: "Active 2", detail: "")
+        await repository.addWithoutIssue(title: "Done 1", detail: "")
 
-        repository.toggleDone(repository.items[2])
+        await repository.toggleDone(repository.items[2])
 
         #expect(repository.activeTodos.count == 2)
         #expect(repository.activeTodos.allSatisfy { !$0.isDone })
     }
 
     @Test("Done todos filter")
-    func doneTodos() {
+    func doneTodos() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Active 1", detail: "")
-        repository.add(title: "Done 1", detail: "")
-        repository.add(title: "Done 2", detail: "")
+        await repository.addWithoutIssue(title: "Active 1", detail: "")
+        await repository.addWithoutIssue(title: "Done 1", detail: "")
+        await repository.addWithoutIssue(title: "Done 2", detail: "")
 
-        repository.toggleDone(repository.items[1])
-        repository.toggleDone(repository.items[2])
+        await repository.toggleDone(repository.items[1])
+        await repository.toggleDone(repository.items[2])
 
         #expect(repository.doneTodos.count == 2)
         #expect(repository.doneTodos.allSatisfy { $0.isDone })
     }
 
     @Test("Persistence with storage")
-    func persistence() async throws {
+    func persistence() async {
         let storage = InMemoryStorage()
         let repository1 = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository1.add(title: "Persistent", detail: "Should persist")
-
-        // Wait for the save to complete
-        try await Task.sleep(for: .milliseconds(100))
+        await repository1.addWithoutIssue(title: "Persistent", detail: "Should persist")
 
         let repository2 = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
-
-        // Wait for the load to complete
-        try await Task.sleep(for: .milliseconds(100))
+        // Explicitly load from storage
+        await repository2.loadFromStorage()
 
         #expect(repository2.items.count == 1)
         #expect(repository2.items[0].title == "Persistent")
     }
 
     @Test("Delete at offsets")
-    func deleteAtOffsets() {
+    func deleteAtOffsets() async {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: NoOpGitHubIssueCreator())
 
-        repository.add(title: "Item 1", detail: "")
-        repository.add(title: "Item 2", detail: "")
-        repository.add(title: "Item 3", detail: "")
+        await repository.addWithoutIssue(title: "Item 1", detail: "")
+        await repository.addWithoutIssue(title: "Item 2", detail: "")
+        await repository.addWithoutIssue(title: "Item 3", detail: "")
 
         let activeTodos = repository.activeTodos
-        repository.delete(at: IndexSet(integer: 1), from: activeTodos)
+        await repository.delete(at: IndexSet(integer: 1), from: activeTodos)
 
         #expect(repository.items.count == 2)
     }

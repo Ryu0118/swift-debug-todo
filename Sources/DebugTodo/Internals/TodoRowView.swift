@@ -5,10 +5,12 @@ import SwiftUI
 final class TodoRowModel {
     let item: TodoItem
     let onToggle: () -> Void
+    let effectiveDoneState: Bool
 
-    init(item: TodoItem, onToggle: @escaping () -> Void) {
+    init(item: TodoItem, onToggle: @escaping () -> Void, effectiveDoneState: Bool? = nil) {
         self.item = item
         self.onToggle = onToggle
+        self.effectiveDoneState = effectiveDoneState ?? item.isDone
     }
 }
 
@@ -23,8 +25,8 @@ struct TodoRowView: View {
             Button {
                 model.onToggle()
             } label: {
-                Image(systemName: model.item.isDone ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(model.item.isDone ? .blue : .gray)
+                Image(systemName: model.effectiveDoneState ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(model.effectiveDoneState ? .blue : .gray)
                     .imageScale(.large)
             }
             .buttonStyle(.plain)
@@ -36,8 +38,8 @@ struct TodoRowView: View {
                 HStack(spacing: 6) {
                     Text(model.item.title)
                         .font(.body)
-                        .strikethrough(model.item.isDone)
-                        .foregroundStyle(model.item.isDone ? .secondary : .primary)
+                        .strikethrough(model.effectiveDoneState)
+                        .foregroundStyle(model.effectiveDoneState ? .secondary : .primary)
 
                     if let issueNumber = model.item.gitHubIssueNumber {
                         Button {

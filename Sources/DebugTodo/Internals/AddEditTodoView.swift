@@ -25,7 +25,7 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         self.detail = editingItem?.detail ?? ""
     }
 
-    func save() -> Bool {
+    func save() async -> Bool {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return false }
 
@@ -34,7 +34,7 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             var updatedItem = editingItem
             updatedItem.title = trimmedTitle
             updatedItem.detail = detail
-            repository.update(updatedItem)
+            await repository.update(updatedItem)
             return true
         } else {
             // Add new item - check if confirmation is needed
@@ -43,8 +43,13 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
                 showCreateIssueAlert = true
                 return false
             } else {
-                repository.add(title: trimmedTitle, detail: detail, createIssue: true)
-                return true
+                do {
+                    try await repository.add(title: trimmedTitle, detail: detail, createIssue: true)
+                    return true
+                } catch {
+                    errorMessage = error.localizedDescription
+                    return false
+                }
             }
         }
     }
@@ -68,16 +73,39 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         logger.debug("Updated issue #\(issueNumber) content")
     }
 
-    func addWithIssue() {
+    func addWithIssue() async {
+        // Validate GitHub settings
+        guard let service = service else {
+            errorMessage = "GitHub service is not configured"
+            return
+        }
+
+        let settings = service.repositorySettings
+        if settings.owner.isEmpty {
+            errorMessage = "GitHub owner is not configured"
+            return
+        }
+        if settings.repo.isEmpty {
+            errorMessage = "GitHub repository is not configured"
+            return
+        }
+        if service.credentials.personalAccessToken.isEmpty {
+            errorMessage = "GitHub Personal Access Token is not configured"
+            return
+        }
+
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        repository.add(title: trimmedTitle, detail: detail, createIssue: true) { [self] error in
-            self.errorMessage = error.localizedDescription
+
+        do {
+            try await repository.add(title: trimmedTitle, detail: detail, createIssue: true)
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
-    func addWithoutIssue() {
+    func addWithoutIssue() async {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        repository.add(title: trimmedTitle, detail: detail, createIssue: false)
+        await repository.addWithoutIssue(title: trimmedTitle, detail: detail)
     }
 }
 
@@ -132,16 +160,16 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button(model.editingItem == nil ? "Add" : "Save") {
-                        if model.save() {
-                            // Update GitHub issue if linked
-                            Task {
+                        Task {
+                            if await model.save() {
+                                // Update GitHub issue if linked
                                 do {
                                     try await model.updateGitHubIssue()
                                 } catch {
                                     logger.error("Failed to update GitHub issue: \(error)")
                                 }
+                                dismiss()
                             }
-                            dismiss()
                         }
                     }
                     .disabled(model.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -149,12 +177,19 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
             }
             .alert("Create GitHub Issue?", isPresented: $model.showCreateIssueAlert) {
                 Button("Skip", role: .cancel) {
-                    model.addWithoutIssue()
-                    dismiss()
+                    Task {
+                        await model.addWithoutIssue()
+                        dismiss()
+                    }
                 }
                 Button("Create Issue", role: .destructive) {
-                    model.addWithIssue()
-                    dismiss()
+                    Task {
+                        await model.addWithIssue()
+                        // Only dismiss if no error occurred
+                        if model.errorMessage == nil {
+                            dismiss()
+                        }
+                    }
                 }
             } message: {
                 Text("Do you want to create a GitHub issue for this todo?")

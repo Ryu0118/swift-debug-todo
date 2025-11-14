@@ -33,40 +33,40 @@ struct AddEditTodoModelTests {
     }
 
     @Test("Save returns false when title is empty")
-    func saveReturnsFalseWhenTitleIsEmpty() {
+    func saveReturnsFalseWhenTitleIsEmpty() async {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = ""
-        let result = model.save()
+        let result = await model.save()
 
         #expect(result == false)
         #expect(repository.activeTodos.isEmpty)
     }
 
     @Test("Save returns false when title is whitespace only")
-    func saveReturnsFalseWhenTitleIsWhitespace() {
+    func saveReturnsFalseWhenTitleIsWhitespace() async {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = "   \n\t  "
-        let result = model.save()
+        let result = await model.save()
 
         #expect(result == false)
         #expect(repository.activeTodos.isEmpty)
     }
 
     @Test("Save adds new todo without confirmation when no repository settings")
-    func saveAddsNewTodoWithoutConfirmation() {
+    func saveAddsNewTodoWithoutConfirmation() async {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = "New Todo"
         model.detail = "Details"
-        let result = model.save()
+        let result = await model.save()
 
         #expect(result == true)
         #expect(repository.activeTodos.count == 1)
@@ -75,7 +75,7 @@ struct AddEditTodoModelTests {
     }
 
     @Test("Save adds new todo without confirmation when confirmation disabled")
-    func saveAddsNewTodoWhenConfirmationDisabled() {
+    func saveAddsNewTodoWhenConfirmationDisabled() async {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let settings = GitHubRepositorySettings(
@@ -83,14 +83,14 @@ struct AddEditTodoModelTests {
         let model = AddEditTodoModel(repository: repository, repositorySettings: settings)
 
         model.title = "New Todo"
-        let result = model.save()
+        let result = await model.save()
 
         #expect(result == true)
         #expect(repository.activeTodos.count == 1)
     }
 
     @Test("Save shows confirmation alert when confirmation enabled")
-    func saveShowsConfirmationAlertWhenEnabled() {
+    func saveShowsConfirmationAlertWhenEnabled() async {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let settings = GitHubRepositorySettings(
@@ -98,7 +98,7 @@ struct AddEditTodoModelTests {
         let model = AddEditTodoModel(repository: repository, repositorySettings: settings)
 
         model.title = "New Todo"
-        let result = model.save()
+        let result = await model.save()
 
         #expect(result == false)
         #expect(model.showCreateIssueAlert == true)
@@ -106,16 +106,16 @@ struct AddEditTodoModelTests {
     }
 
     @Test("Save updates existing todo")
-    func saveUpdatesExistingTodo() {
+    func saveUpdatesExistingTodo() async throws {
         let storage = InMemoryStorage()
         let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
-        repository.add(title: "Original", detail: "Original Detail", createIssue: false)
+        try await repository.add(title: "Original", detail: "Original Detail", createIssue: false)
         let item = repository.activeTodos.first!
 
         let model = AddEditTodoModel(repository: repository, editingItem: item)
         model.title = "Updated"
         model.detail = "Updated Detail"
-        let result = model.save()
+        let result = await model.save()
 
         #expect(result == true)
         #expect(repository.activeTodos.count == 1)
@@ -124,41 +124,46 @@ struct AddEditTodoModelTests {
     }
 
     @Test("Save trims whitespace from title")
-    func saveTrimWhitespaceFromTitle() {
+    func saveTrimWhitespaceFromTitle() async {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = "  Trimmed Title  "
-        let result = model.save()
+        let result = await model.save()
 
         #expect(result == true)
         #expect(repository.activeTodos.first?.title == "Trimmed Title")
     }
 
-    @Test("Add with issue creates todo")
-    func addWithIssue() {
+    @Test("Add with issue creates todo when service is configured")
+    func addWithIssue() async {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
-        let model = AddEditTodoModel(repository: repository)
+        let service = GitHubService()
+        service.repositorySettings.owner = "test"
+        service.repositorySettings.repo = "repo"
+        service.credentials.personalAccessToken = "test-token"
+        let model = AddEditTodoModel(repository: repository, service: service)
 
         model.title = "New Todo"
         model.detail = "Details"
-        model.addWithIssue()
+        await model.addWithIssue()
 
         #expect(repository.activeTodos.count == 1)
         #expect(repository.activeTodos.first?.title == "New Todo")
+        #expect(model.errorMessage == nil)
     }
 
     @Test("Add without issue creates todo")
-    func addWithoutIssue() {
+    func addWithoutIssue() async {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
         model.title = "New Todo"
         model.detail = "Details"
-        model.addWithoutIssue()
+        await model.addWithoutIssue()
 
         #expect(repository.activeTodos.count == 1)
         #expect(repository.activeTodos.first?.title == "New Todo")

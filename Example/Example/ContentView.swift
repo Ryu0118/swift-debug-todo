@@ -1,19 +1,7 @@
 import DebugTodo
 import SwiftUI
 
-@MainActor
-@Observable
-final class ContentModel {
-    init() {}
-}
-
 struct ContentView: View {
-    let model: ContentModel
-
-    init(model: ContentModel) {
-        self.model = model
-    }
-
     var body: some View {
         NavigationStack {
             List {
@@ -81,5 +69,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView(model: ContentModel())
+    ContentView()
 }

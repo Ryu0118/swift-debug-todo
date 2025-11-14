@@ -11,12 +11,58 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         var editMode: EditMode = .inactive
     #endif
     var showDeleteAllAlert = false
-    var selectedTodoIDs: Set<TodoItem.ID> = []
     var showReopenAlert = false
     var pendingReopenItem: TodoItem?
 
     // Child models
     var addEditModel: AddEditTodoModel<S, G>?
+
+    // In-memory set to track toggled item IDs (items whose done state has changed)
+    private(set) var toggledItemIDs: Set<TodoItem.ID> = []
+
+    // In-memory set to track deleted item IDs (items that should be hidden)
+    private(set) var deletedItemIDs: Set<TodoItem.ID> = []
+
+    // Computed property to get displayed done todos
+    var displayedDoneTodos: [TodoItem] {
+        // Explicitly reference both dependencies to ensure proper observation
+        let allItems = repository.items
+        let toggledIDs = toggledItemIDs
+        let deletedIDs = deletedItemIDs
+
+        return allItems
+            .filter { item in
+                // Include if: (done and not deleted) OR (active and toggled and not deleted)
+                (item.isDone && !deletedIDs.contains(item.id)) ||
+                (!item.isDone && toggledIDs.contains(item.id) && !deletedIDs.contains(item.id))
+            }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    // Check if an item's done state has been toggled in-memory
+    func isToggledInMemory(_ item: TodoItem) -> Bool {
+        toggledItemIDs.contains(item.id)
+    }
+
+    // Get the effective done state for display (considering in-memory toggles)
+    func effectiveDoneState(for item: TodoItem) -> Bool {
+        // Simply return the item's current isDone state from repository
+        // The item displayed in the list already reflects the repository state
+        return item.isDone
+    }
+
+    func loadDoneTodos() async {
+        // Load items from storage first
+        await repository.loadFromStorage()
+        // Clear in-memory state
+        toggledItemIDs.removeAll()
+        deletedItemIDs.removeAll()
+    }
+
+    func refresh() async {
+        // Clear in-memory state
+        await loadDoneTodos()
+    }
 
     init(
         repository: TodoRepository<S, G>, repositorySettings: GitHubRepositorySettings? = nil,
@@ -27,40 +73,53 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         self.service = service
     }
 
-    func deleteAllDoneTodos() {
-        let todosToDelete = repository.doneTodos
-        for todo in todosToDelete {
-            repository.delete(todo)
+    func deleteAllDoneTodos() async {
+        for todo in repository.doneTodos {
+            await repository.delete(todo)
+            deletedItemIDs.insert(todo.id)
         }
     }
 
-    func deleteSelectedTodos() {
-        let todosToDelete = repository.doneTodos.filter { selectedTodoIDs.contains($0.id) }
-        for todo in todosToDelete {
-            repository.delete(todo)
-        }
-        selectedTodoIDs.removeAll()
-    }
-
-    func handleReopen(_ item: TodoItem) {
+    func handleReopen(_ item: TodoItem) async {
         // Always show alert if item has a linked GitHub issue
         if item.gitHubIssueUrl != nil {
             pendingReopenItem = item
             showReopenAlert = true
         } else {
-            repository.toggleDone(item)
+            // Toggle the in-memory state
+            if toggledItemIDs.contains(item.id) {
+                toggledItemIDs.remove(item.id)
+            } else {
+                toggledItemIDs.insert(item.id)
+            }
+            // Update repository
+            await repository.toggleDone(item)
         }
     }
 
-    func reopenWithoutIssueUpdate() {
+    func reopenWithoutIssueUpdate() async {
         guard let item = pendingReopenItem else { return }
-        repository.toggleDone(item)
+        // Toggle the in-memory state
+        if toggledItemIDs.contains(item.id) {
+            toggledItemIDs.remove(item.id)
+        } else {
+            toggledItemIDs.insert(item.id)
+        }
+        // Update repository
+        await repository.toggleDone(item)
         pendingReopenItem = nil
     }
 
-    func reopenWithIssueUpdate() {
+    func reopenWithIssueUpdate() async {
         guard let item = pendingReopenItem else { return }
-        repository.toggleDone(item)
+        // Toggle the in-memory state
+        if toggledItemIDs.contains(item.id) {
+            toggledItemIDs.remove(item.id)
+        } else {
+            toggledItemIDs.insert(item.id)
+        }
+        // Update repository
+        await repository.toggleDone(item)
         pendingReopenItem = nil
     }
 
@@ -81,6 +140,12 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         logger.debug("Reopened issue #\(issueNumber)")
     }
 
+    func handleDelete(_ item: TodoItem) async {
+        // Update repository immediately, but hide from view
+        await repository.delete(item)
+        deletedItemIDs.insert(item.id)
+    }
+
     func createAddEditModel(editingItem: TodoItem) -> AddEditTodoModel<S, G> {
         AddEditTodoModel(
             repository: repository,
@@ -96,15 +161,15 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
 
     var body: some View {
         Group {
-            if model.repository.doneTodos.isEmpty {
+            if model.displayedDoneTodos.isEmpty {
                 ContentUnavailableView(
                     "No Completed Todos",
                     systemImage: "checkmark.circle",
                     description: Text("Completed todos will appear here")
                 )
             } else {
-                List(selection: $model.selectedTodoIDs) {
-                    ForEach(model.repository.doneTodos) { item in
+                List {
+                    ForEach(model.displayedDoneTodos) { item in
                         NavigationLink {
                             AddEditTodoView(model: model.createAddEditModel(editingItem: item))
                         } label: {
@@ -112,58 +177,67 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                                 model: TodoRowModel(
                                     item: item,
                                     onToggle: {
-                                        model.handleReopen(item)
-                                    }
+                                        Task {
+                                            await model.handleReopen(item)
+                                        }
+                                    },
+                                    effectiveDoneState: model.effectiveDoneState(for: item)
                                 )
                             )
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                model.repository.delete(item)
+                                Task {
+                                    await model.handleDelete(item)
+                                }
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .leading).combined(with: .opacity),
+                            removal: .move(edge: .trailing).combined(with: .opacity)
+                        ))
                     }
                     .onDelete { indexSet in
-                        model.repository.delete(at: indexSet, from: model.repository.doneTodos)
+                        Task {
+                            for index in indexSet {
+                                let item = model.displayedDoneTodos[index]
+                                await model.handleDelete(item)
+                            }
+                        }
                     }
                 }
             }
+        }
+        .task {
+            await model.loadDoneTodos()
+        }
+        .refreshable {
+            await model.refresh()
         }
         .navigationTitle("Done")
         #if os(iOS)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if model.editMode == .active && !model.selectedTodoIDs.isEmpty {
-                        Button(role: .destructive) {
-                            model.deleteSelectedTodos()
-                        } label: {
-                            Label("Delete Selected", systemImage: "trash")
-                        }
-                    } else {
-                        Button(role: .destructive) {
-                            model.showDeleteAllAlert = true
-                        } label: {
-                            Label("Delete All", systemImage: "trash")
-                        }
-                        .disabled(model.repository.doneTodos.isEmpty)
+                    Button(role: .destructive) {
+                        model.showDeleteAllAlert = true
+                    } label: {
+                        Label("Delete All", systemImage: "trash")
                     }
+                    .disabled(model.displayedDoneTodos.isEmpty)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     EditButton()
                 }
             }
             .environment(\.editMode, $model.editMode)
-            .onChange(of: model.editMode) { oldValue, newValue in
-                if newValue == .inactive {
-                    model.selectedTodoIDs.removeAll()
-                }
-            }
         #endif
         .alert("Delete All Done Todos", isPresented: $model.showDeleteAllAlert) {
             Button("Delete", role: .destructive) {
-                model.deleteAllDoneTodos()
+                Task {
+                    await model.deleteAllDoneTodos()
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -172,8 +246,8 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
         .alert("Reopen GitHub Issue?", isPresented: $model.showReopenAlert) {
             Button("Uncheck & Reopen") {
                 if let item = model.pendingReopenItem {
-                    model.reopenWithIssueUpdate()
                     Task {
+                        await model.reopenWithIssueUpdate()
                         do {
                             try await model.reopenGitHubIssue(item: item)
                         } catch {
@@ -183,7 +257,9 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 }
             }
             Button("Uncheck Only") {
-                model.reopenWithoutIssueUpdate()
+                Task {
+                    await model.reopenWithoutIssueUpdate()
+                }
             }
             Button("Cancel", role: .cancel) {
                 model.pendingReopenItem = nil
