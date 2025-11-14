@@ -44,11 +44,17 @@ jobs:
       run: make test-${{ matrix.platform }}
 
   example:
-    name: Example ${{ matrix.platform }}
+    name: Example ${{ matrix.config.name }}
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos, ios, visionos]
+        config:
+          - name: macOS
+            destination: 'platform=macOS'
+          - name: iOS
+            destination: 'platform=iOS Simulator,name=iPhone 17'
+          - name: visionOS
+            destination: 'platform=visionOS Simulator,name=Apple Vision Pro'
     runs-on: macos-latest
 
     steps:
@@ -64,7 +70,7 @@ jobs:
         xcodebuild clean build \
           -scheme Example \
           -project Example.xcodeproj \
-          -destination 'generic/platform=${{ matrix.platform == 'macos' && 'macOS' || matrix.platform == 'ios' && 'iOS' || 'visionOS' }}' \
+          -destination '${{ matrix.config.destination }}' \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO
