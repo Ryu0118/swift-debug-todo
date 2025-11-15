@@ -1,38 +1,38 @@
 import Foundation
 
-/// Todo操作に関するエラー
+/// Errors related to Todo operations
 public enum TodoError: Error, Equatable, Sendable {
-    /// ストレージ操作のエラー
+    /// Storage operation error
     case storageError(String)
 
-    /// GitHub API関連のエラー
+    /// GitHub API related error
     case githubError(GitHubError)
 
-    /// バリデーションエラー
+    /// Validation error
     case validationError(String)
 
-    /// その他のエラー
+    /// Other errors
     case unknown(String)
 }
 
-/// GitHub操作に関するエラー
+/// Errors related to GitHub operations
 public enum GitHubError: Error, Equatable, Sendable {
-    /// Issue作成失敗
+    /// Issue creation failed
     case issueCreationFailed(String)
 
-    /// Issue更新失敗
+    /// Issue update failed
     case issueUpdateFailed(String)
 
-    /// Issue取得失敗
+    /// Issue fetch failed
     case issueFetchFailed(String)
 
-    /// 認証エラー
+    /// Authentication error
     case authenticationError(String)
 
-    /// ネットワークエラー
+    /// Network error
     case networkError(String)
 
-    /// 設定が不完全
+    /// Incomplete settings
     case incompleteSettings(String)
 }
 

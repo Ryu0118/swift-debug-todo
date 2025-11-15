@@ -5,7 +5,7 @@ import SwiftUI
 #endif
 
 extension View {
-    /// DataStateに基づいてローディングオーバーレイを表示
+    /// Display loading overlay based on DataState
     @ViewBuilder
     public func loadingOverlay<Value, ErrorType>(
         for state: DataState<Value, ErrorType>
@@ -24,7 +24,7 @@ extension View {
             }
     }
 
-    /// IssueOperationStateに基づいてローディングオーバーレイを表示
+    /// Display loading overlay based on IssueOperationState
     @ViewBuilder
     public func issueOperationOverlay<ErrorType>(
         for state: IssueOperationState<ErrorType>

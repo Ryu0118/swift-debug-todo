@@ -1,34 +1,34 @@
 import Foundation
 
-/// GitHub Issue操作の状態を管理
+/// Manages GitHub Issue operation state
 public enum IssueOperationState<ErrorType: Error> {
-    /// 操作が行われていない
+    /// No operation in progress
     case idle
 
-    /// 操作中
+    /// Operation in progress
     case inProgress
 
-    /// 操作成功
+    /// Operation succeeded
     case succeeded
 
-    /// 操作失敗
+    /// Operation failed
     case failed(ErrorType)
 }
 
 extension IssueOperationState {
-    /// 操作中かどうか
+    /// Whether operation is in progress
     public var isInProgress: Bool {
         if case .inProgress = self { return true }
         return false
     }
 
-    /// エラー情報
+    /// Error information
     public var error: ErrorType? {
         if case .failed(let error) = self { return error }
         return nil
     }
 
-    /// 成功したかどうか
+    /// Whether operation succeeded
     public var isSucceeded: Bool {
         if case .succeeded = self { return true }
         return false

@@ -1,26 +1,26 @@
 import Foundation
 
-/// 非同期データの状態を表現する汎用的なenum
+/// Generic enum representing the state of asynchronous data
 ///
-/// - Case 0: 基本的なloading/loaded/error状態
-/// - Case 1: 再読み込み中もデータを保持
-/// - Case 4: 再読み込み失敗時も前のデータを保持
+/// - Case 0: Basic loading/loaded/error states
+/// - Case 1: Retains data while reloading
+/// - Case 4: Retains previous data on reload failure
 public enum DataState<Value, ErrorType: Error> {
-    /// データが読み込まれていない、または初期状態
+    /// Data not loaded or in initial state
     case idle
 
-    /// データを読み込み中（オプショナルで過去のデータを保持）
+    /// Loading data (optionally retains previous data)
     case loading(Value?)
 
-    /// データの読み込みに成功
+    /// Successfully loaded data
     case loaded(Value)
 
-    /// データの読み込みに失敗（オプショナルで過去のデータを保持）
+    /// Failed to load data (optionally retains previous data)
     case failed(ErrorType, Value?)
 }
 
 extension DataState {
-    /// 現在保持しているデータ（あればnil、なければnil）
+    /// Currently held data (nil if none)
     public var value: Value? {
         switch self {
         case .idle:
@@ -34,7 +34,7 @@ extension DataState {
         }
     }
 
-    /// エラー情報（エラー状態でなければnil）
+    /// Error information (nil if not in error state)
     public var error: ErrorType? {
         switch self {
         case .failed(let error, _):
@@ -44,18 +44,18 @@ extension DataState {
         }
     }
 
-    /// ローディング中かどうか
+    /// Whether currently loading
     public var isLoading: Bool {
         if case .loading = self { return true }
         return false
     }
 
-    /// データが存在するかどうか
+    /// Whether data exists
     public var hasValue: Bool {
         value != nil
     }
 
-    /// データをマップして新しいDataStateを作成
+    /// Map data to create a new DataState
     public func map<T>(_ transform: (Value) -> T) -> DataState<T, ErrorType> {
         switch self {
         case .idle:
