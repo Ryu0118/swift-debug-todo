@@ -1,5 +1,6 @@
 import DebugTodo
 import SwiftUI
+internal import Logging
 
 struct ContentView: View {
     var body: some View {
@@ -7,7 +8,10 @@ struct ContentView: View {
             List {
                 Section("Basic Storage") {
                     NavigationLink {
-                        TodoListView(storage: InMemoryStorage())
+                        TodoListView(
+                            storage: InMemoryStorage(),
+                            logLevel: .trace
+                        )
                     } label: {
                         VStack(alignment: .leading) {
                             Text(StorageType.inMemory.rawValue)
@@ -22,7 +26,10 @@ struct ContentView: View {
                         let fileURL = FileManager.default
                             .urls(for: .documentDirectory, in: .userDomainMask)[0]
                             .appendingPathComponent("todos.json")
-                        TodoListView(storage: FileStorage(fileURL: fileURL))
+                        TodoListView(
+                            storage: FileStorage(fileURL: fileURL),
+                            logLevel: .trace
+                        )
                     } label: {
                         VStack(alignment: .leading) {
                             Text(StorageType.fileStorage.rawValue)
@@ -34,7 +41,10 @@ struct ContentView: View {
                     }
 
                     NavigationLink {
-                        TodoListView(storage: UserDefaultsStorage())
+                        TodoListView(
+                            storage: UserDefaultsStorage(),
+                            logLevel: .trace
+                        )
                     } label: {
                         VStack(alignment: .leading) {
                             Text(StorageType.userDefaults.rawValue)
