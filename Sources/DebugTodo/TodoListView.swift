@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 @Observable
-final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
+final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol>: TodoListManaging {
     struct ToggleAlertContext: Equatable {
         let item: TodoItem
         let itemWithState: TodoItemWithIssueState
@@ -14,7 +14,6 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     }
 
     var repository: TodoRepository<S, G>
-    var service: GitHubService?
     var isShowingAddView = false
 
     // State management
@@ -24,199 +23,95 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     var deleteAlert: AlertState<DeleteAlertContext> = .dismissed
 
     // Child models
-    var addEditModel: AddEditTodoModel<S, G>?
     private(set) var doneListModel: DoneTodoListModel<S, G>
 
-    // In-memory set to track toggled item IDs (to keep them visible in current session)
-    private(set) var toggledItemIDs: Set<TodoItem.ID> = []
+    // In-memory state management
+    let stateManager = InMemoryStateManager()
 
-    // In-memory set to track deleted item IDs (items that should be hidden)
-    private(set) var deletedItemIDs: Set<TodoItem.ID> = []
+    // GitHub issue operation service
+    private(set) var issueOperationService: GitHubIssueOperationService?
+
+    // Backward compatibility accessors
+    var toggledItemIDs: Set<TodoItem.ID> { stateManager.toggledItemIDs }
+    var deletedItemIDs: Set<TodoItem.ID> { stateManager.deletedItemIDs }
+
+    // Protocol conformance
+    var displayedTodos: [TodoItemWithIssueState] {
+        displayedActiveTodos
+    }
 
     // Computed property to get displayed active todos
     var displayedActiveTodos: [TodoItemWithIssueState] {
         guard let allItemsWithStates = todosDataState.value else { return [] }
-        let toggledIDs = toggledItemIDs
-        let deletedIDs = deletedItemIDs
 
         return
             allItemsWithStates
             .filter { itemWithState in
                 let item = itemWithState.item
                 // Include if: (active and not deleted) OR (done and toggled in this session and not deleted)
-                return (!item.isDone && !deletedIDs.contains(item.id))
-                    || (item.isDone && toggledIDs.contains(item.id)
-                        && !deletedIDs.contains(item.id))
+                return (!item.isDone && !stateManager.isDeleted(item.id))
+                    || (item.isDone && stateManager.isToggled(item.id)
+                        && !stateManager.isDeleted(item.id))
             }
             .sorted { $0.item.createdAt > $1.item.createdAt }
     }
 
-    // Check if an item's done state has been toggled in-memory
-    func isToggledInMemory(_ item: TodoItem) -> Bool {
-        toggledItemIDs.contains(item.id)
-    }
-
     func loadActiveTodos() async {
-        todosDataState = .loading(todosDataState.value)
-
-        // Load items from storage first
-        await repository.loadFromStorage()
-        // Fetch items with their issue states
-        let items = await repository.fetchItemsWithIssueStates()
-
-        todosDataState = .loaded(items)
-    }
-
-    func refresh() async {
-        // Clear in-memory state
-        await loadActiveTodos()
+        await loadTodos()
     }
 
     init(repository: TodoRepository<S, G>, service: GitHubService?) {
         self.repository = repository
-        self.service = service
         // Set the service on repository for fetching issue states
         repository.setService(service)
+        let issueOpService = service.map { GitHubIssueOperationService(service: $0) }
+        self.issueOperationService = issueOpService
         self.doneListModel = DoneTodoListModel(
             repository: repository,
             repositorySettings: service?.repositorySettings,
-            service: service
+            issueOperationService: issueOpService
         )
     }
 
     func handleToggle(_ item: TodoItem) async {
-        // Find the corresponding TodoItemWithIssueState from todosDataState
-        let itemWithState = todosDataState.value?.first { $0.item.id == item.id }
-
-        // Show alert only if item has a linked GitHub issue AND the action would change the issue state
-        if item.gitHubIssueUrl != nil, let itemWithState = itemWithState {
-            // Determine if we need to show alert based on desired state change
-            let wouldChangeIssueState: Bool
-            if item.isDone {
-                // Unchecking: only show alert if issue is currently closed (would need to reopen)
-                wouldChangeIssueState = (itemWithState.issueState == .closed)
-            } else {
-                // Checking: only show alert if issue is currently open (would need to close)
-                wouldChangeIssueState = (itemWithState.issueState == .open)
-            }
-
-            if wouldChangeIssueState {
-                toggleAlert = .presented(ToggleAlertContext(item: item, itemWithState: itemWithState))
-            } else {
-                // Issue is already in desired state, perform toggle without showing alert
-                if toggledItemIDs.contains(item.id) {
-                    toggledItemIDs.remove(item.id)
-                } else {
-                    toggledItemIDs.insert(item.id)
-                }
-                await repository.toggleDone(item)
-                let items = await repository.fetchItemsWithIssueStates()
-                todosDataState = .loaded(items)
-            }
-        } else {
-            // Toggle the in-memory state
-            if toggledItemIDs.contains(item.id) {
-                toggledItemIDs.remove(item.id)
-            } else {
-                toggledItemIDs.insert(item.id)
-            }
-            // Update repository
-            await repository.toggleDone(item)
-
-            // Refresh issue states after toggle
-            let items = await repository.fetchItemsWithIssueStates()
-            todosDataState = .loaded(items)
+        await handleToggleWithAlert(item) { [weak self] item, itemWithState in
+            self?.toggleAlert = .presented(ToggleAlertContext(item: item, itemWithState: itemWithState))
         }
     }
 
     func toggleWithIssueUpdate(context: ToggleAlertContext, stateReason: IssueStateReason?) async {
-        let item = context.item
-
-        issueOperationState = .inProgress
-
-        // Mark item to keep visible in current session
-        toggledItemIDs.insert(item.id)
-
-        // Update repository
-        await repository.toggleDone(item)
-
-        // Update GitHub issue state by fetching current state from API
-        do {
-            try await updateIssueStateFromAPI(item: item, stateReason: stateReason)
-            issueOperationState = .succeeded
-        } catch {
-            logger.error("Failed to update GitHub issue state: \(error)")
-            let todoError = mapError(error)
-            issueOperationState = .failed(todoError)
-        }
-
-        // Refresh issue states after toggle (toggledItemIDs keeps item visible)
-        let items = await repository.fetchItemsWithIssueStates()
-        todosDataState = .loaded(items)
+        await toggleWithIssueUpdate(
+            item: context.item,
+            stateReason: stateReason,
+            issueOperationService: issueOperationService
+        )
         toggleAlert = .dismissed
     }
 
-    private func updateIssueStateFromAPI(item: TodoItem, stateReason: IssueStateReason?) async throws {
-        guard let service = service,
-            let issueNumber = item.gitHubIssueNumber
-        else {
-            return
-        }
-
-        // Fetch current issue state from GitHub API
-        let currentIssue = try await service.issueCreator.getIssue(
-            owner: service.repositorySettings.owner,
-            repo: service.repositorySettings.repo,
-            issueNumber: issueNumber
-        )
-
-        // Determine new state based on current GitHub state
-        let newState = currentIssue.state == "open" ? "closed" : "open"
-
-        _ = try await service.issueCreator.updateIssueState(
-            owner: service.repositorySettings.owner,
-            repo: service.repositorySettings.repo,
-            issueNumber: issueNumber,
-            state: newState,
-            stateReason: stateReason
-        )
-        logger.debug(
-            "Updated issue #\(issueNumber) from \(currentIssue.state) to \(newState) with reason: \(stateReason?.rawValue ?? "nil")")
-    }
-
     func toggleWithoutIssueUpdate(context: ToggleAlertContext) async {
-        let item = context.item
-
-        // Mark item to keep visible in current session
-        toggledItemIDs.insert(item.id)
-
-        // Update repository
-        await repository.toggleDone(item)
-
-        // Refresh issue states after toggle (toggledItemIDs keeps item visible)
-        let items = await repository.fetchItemsWithIssueStates()
-        todosDataState = .loaded(items)
+        await toggleWithoutIssueUpdate(item: context.item)
         toggleAlert = .dismissed
     }
 
     func handleDelete(_ item: TodoItem) async {
-        // Show alert only if item has a linked GitHub issue, is not done, AND the issue is open
+        // Show alert only if item has a linked GitHub issue, is not done, AND the issue is open/unknown
         if item.gitHubIssueUrl != nil && !item.isDone {
             // Find the issue state
             let itemWithState = todosDataState.value?.first { $0.item.id == item.id }
 
-            // Only show alert if issue is currently open (would need to close)
-            if itemWithState?.issueState == .open {
+            // Only show alert if issue is currently open or unknown (would need to close)
+            let shouldShowAlert = itemWithState?.issueState == .open || itemWithState?.issueState == nil
+            if shouldShowAlert {
                 deleteAlert = .presented(DeleteAlertContext(item: item))
             } else {
-                // Issue is already closed or state unknown, delete without alert
+                // Issue is already closed, delete without alert
                 await repository.delete(item)
-                deletedItemIDs.insert(item.id)
+                stateManager.markAsDeleted(item.id)
             }
         } else {
             // Update repository immediately, but hide from view
             await repository.delete(item)
-            deletedItemIDs.insert(item.id)
+            stateManager.markAsDeleted(item.id)
         }
     }
 
@@ -225,7 +120,7 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
         // Update repository immediately, but hide from view
         await repository.delete(item)
-        deletedItemIDs.insert(item.id)
+        stateManager.markAsDeleted(item.id)
         deleteAlert = .dismissed
     }
 
@@ -235,54 +130,31 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         issueOperationState = .inProgress
 
         // Close GitHub issue first
-        do {
-            try await closeIssueForDelete(item: item, stateReason: stateReason)
-            issueOperationState = .succeeded
-        } catch {
-            logger.error("Failed to close GitHub issue: \(error)")
-            let todoError = mapError(error)
-            issueOperationState = .failed(todoError)
+        if let issueOperationService = issueOperationService {
+            do {
+                try await issueOperationService.closeIssue(for: item, stateReason: stateReason)
+                issueOperationState = .succeeded
+            } catch {
+                logger.error("Failed to close GitHub issue: \(error)")
+                let todoError = mapError(error)
+                issueOperationState = .failed(todoError)
+            }
         }
 
         // Update repository immediately, but hide from view
         await repository.delete(item)
-        deletedItemIDs.insert(item.id)
+        stateManager.markAsDeleted(item.id)
         deleteAlert = .dismissed
-    }
-
-    private func closeIssueForDelete(item: TodoItem, stateReason: IssueStateReason) async throws {
-        guard let service = service,
-            let issueNumber = item.gitHubIssueNumber
-        else {
-            return
-        }
-
-        _ = try await service.issueCreator.updateIssueState(
-            owner: service.repositorySettings.owner,
-            repo: service.repositorySettings.repo,
-            issueNumber: issueNumber,
-            state: "closed",
-            stateReason: stateReason
-        )
-        logger.debug("Closed issue #\(issueNumber) as \(stateReason.rawValue) before deleting todo")
     }
 
     func createAddEditModel(editingItem: TodoItem? = nil) -> AddEditTodoModel<S, G> {
         AddEditTodoModel(
             repository: repository,
-            repositorySettings: service?.repositorySettings,
-            service: service,
+            repositorySettings: issueOperationService?.service.repositorySettings,
+            service: issueOperationService?.service,
             editingItem: editingItem
         )
     }
-
-    private func mapError(_ error: Error) -> TodoError {
-        if let todoError = error as? TodoError {
-            return todoError
-        }
-        return .unknown(error.localizedDescription)
-    }
-
 }
 
 /// A view that displays the list of active todo items.
@@ -445,7 +317,7 @@ private struct TodoListToolbarContent<S: Storage, G: GitHubIssueCreatorProtocol>
     let model: TodoListModel<S, G>
 
     var body: some ToolbarContent {
-        if let service = model.service {
+        if let service = model.issueOperationService?.service {
             ToolbarItem(placement: .primaryAction) {
                 NavigationLink {
                     GitHubSettingsView(model: GitHubSettingsModel(service: service))

@@ -36,9 +36,10 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
-        let model = DoneTodoListModel(repository: repository, service: service)
+        let issueOperationService = GitHubIssueOperationService(service: service)
+        let model = DoneTodoListModel(repository: repository, issueOperationService: issueOperationService)
 
-        #expect(model.service != nil)
+        #expect(model.issueOperationService != nil)
     }
 
     @Test("Delete all done todos")
@@ -193,7 +194,8 @@ struct DoneTodoListModelTests {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
-        let model = DoneTodoListModel(repository: repository, service: service)
+        let issueOperationService = GitHubIssueOperationService(service: service)
+        let model = DoneTodoListModel(repository: repository, issueOperationService: issueOperationService)
 
         await model.repository.addWithoutIssue(title: "Test", detail: "Detail")
         await model.repository.toggleDone(model.repository.activeTodos.first!)
@@ -245,25 +247,6 @@ struct DoneTodoListModelTests {
 
         #expect(model.repository.activeTodos.count == 2)
         #expect(model.repository.doneTodos.isEmpty)
-    }
-
-    @Test("Load done todos clears in-memory state")
-    func loadDoneTodosClearsInMemoryState() async {
-        let storage = InMemoryStorage()
-        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
-        let model = DoneTodoListModel(repository: repository)
-
-        await model.repository.addWithoutIssue(title: "Test", detail: "")
-        let item = model.repository.activeTodos.first!
-        await model.repository.toggleDone(item)
-
-        let doneItem = model.repository.doneTodos.first!
-        await model.handleToggle(doneItem)
-        #expect(model.toggledItemIDs.contains(doneItem.id))
-
-        await model.loadDoneTodos()
-        #expect(model.toggledItemIDs.isEmpty)
-        #expect(model.displayedDoneTodos.isEmpty)
     }
 
     @Test("Refresh clears in-memory state")

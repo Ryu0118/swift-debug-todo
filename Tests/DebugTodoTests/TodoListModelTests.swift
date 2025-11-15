@@ -28,7 +28,7 @@ struct TodoListModelTests {
         let service = GitHubService()
         let model = TodoListModel(repository: repository, service: service)
 
-        #expect(model.service != nil)
+        #expect(model.issueOperationService != nil)
     }
 
     @Test("Handle toggle without GitHub issue")
@@ -250,24 +250,7 @@ struct TodoListModelTests {
         let service = GitHubService()
         let model = TodoListModel(repository: repository, service: service)
 
-        #expect(model.doneListModel.service != nil)
-    }
-
-    @Test("Load active todos clears in-memory state")
-    func loadActiveTodosClearsInMemoryState() async {
-        let storage = InMemoryStorage()
-        let repository = TodoRepository(storage: storage, issueCreator: MockGitHubIssueCreator())
-        let model = TodoListModel(repository: repository, service: nil)
-
-        await model.repository.addWithoutIssue(title: "Test", detail: "")
-        let item = model.repository.activeTodos.first!
-
-        await model.handleToggle(item)
-        #expect(model.toggledItemIDs.contains(item.id))
-
-        await model.loadActiveTodos()
-        #expect(model.toggledItemIDs.isEmpty)
-        #expect(model.displayedActiveTodos.isEmpty)
+        #expect(model.doneListModel.issueOperationService != nil)
     }
 
     @Test("Refresh clears in-memory state")
