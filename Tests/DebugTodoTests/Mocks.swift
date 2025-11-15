@@ -40,8 +40,13 @@ final class MockGitHubIssueCreator: GitHubIssueCreatorProtocol {
     var onTodoCreatedCalls: [TodoItem] = []
     var createIssueCalls: [TodoItem] = []
     var getIssueCalls: [(owner: String, repo: String, issueNumber: Int)] = []
-    var updateIssueStateCalls: [(owner: String, repo: String, issueNumber: Int, state: String, stateReason: IssueStateReason?)] = []
-    var updateIssueContentCalls: [(owner: String, repo: String, issueNumber: Int, title: String, body: String?)] = []
+    var updateIssueStateCalls:
+        [(
+            owner: String, repo: String, issueNumber: Int, state: String,
+            stateReason: IssueStateReason?
+        )] = []
+    var updateIssueContentCalls:
+        [(owner: String, repo: String, issueNumber: Int, title: String, body: String?)] = []
 
     func onTodoCreated(_ item: TodoItem) async throws -> GitHubIssue? {
         onTodoCreatedCalls.append(item)

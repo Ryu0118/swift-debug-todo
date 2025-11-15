@@ -8,7 +8,10 @@ final class TodoRowModel {
     let effectiveDoneState: Bool
     let issueState: GitHubIssueState?
 
-    init(item: TodoItem, onToggle: @escaping () -> Void, effectiveDoneState: Bool? = nil, issueState: GitHubIssueState? = nil) {
+    init(
+        item: TodoItem, onToggle: @escaping () -> Void, effectiveDoneState: Bool? = nil,
+        issueState: GitHubIssueState? = nil
+    ) {
         self.item = item
         self.onToggle = onToggle
         self.effectiveDoneState = effectiveDoneState ?? item.isDone

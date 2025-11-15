@@ -93,7 +93,8 @@ public struct NoOpGitHubIssueCreator: GitHubIssueCreatorProtocol {
         nil
     }
 
-    public func getIssue(owner: String, repo: String, issueNumber: Int) async throws -> GitHubIssue {
+    public func getIssue(owner: String, repo: String, issueNumber: Int) async throws -> GitHubIssue
+    {
         throw NoOpError.notSupported
     }
 

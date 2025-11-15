@@ -1,6 +1,6 @@
 import DebugTodo
-import SwiftUI
 internal import Logging
+import SwiftUI
 
 @MainActor
 @Observable

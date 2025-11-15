@@ -37,7 +37,8 @@ struct DoneTodoListModelTests {
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
         let issueOperationService = GitHubIssueOperationService(service: service)
-        let model = DoneTodoListModel(repository: repository, issueOperationService: issueOperationService)
+        let model = DoneTodoListModel(
+            repository: repository, issueOperationService: issueOperationService)
 
         #expect(model.issueOperationService != nil)
     }
@@ -128,7 +129,8 @@ struct DoneTodoListModelTests {
         await model.loadDoneTodos()
         let doneItem = model.repository.doneTodos.first!
         let itemWithState = TodoItemWithIssueState(item: doneItem, issueState: .closed)
-        let context = DoneTodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(item: doneItem, itemWithState: itemWithState)
+        let context = DoneTodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(
+            item: doneItem, itemWithState: itemWithState)
         model.toggleAlert = .presented(context)
         await model.toggleWithoutIssueUpdate(context: context)
 
@@ -152,7 +154,8 @@ struct DoneTodoListModelTests {
         await model.loadDoneTodos()
         let doneItem = model.repository.doneTodos.first!
         let itemWithState = TodoItemWithIssueState(item: doneItem, issueState: .closed)
-        let context = DoneTodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(item: doneItem, itemWithState: itemWithState)
+        let context = DoneTodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(
+            item: doneItem, itemWithState: itemWithState)
         model.toggleAlert = .presented(context)
         await model.toggleWithIssueUpdate(context: context, stateReason: .reopened)
 
@@ -167,7 +170,8 @@ struct DoneTodoListModelTests {
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = DoneTodoListModel(repository: repository)
 
-        model.deleteAllAlert = .presented(DoneTodoListModel<InMemoryStorage, MockGitHubIssueCreator>.DeleteAllContext())
+        model.deleteAllAlert = .presented(
+            DoneTodoListModel<InMemoryStorage, MockGitHubIssueCreator>.DeleteAllContext())
         #expect(model.deleteAllAlert.isPresented == true)
 
         model.deleteAllAlert = .dismissed
@@ -182,7 +186,9 @@ struct DoneTodoListModelTests {
         let item = TodoItem(title: "Test", detail: "")
         let itemWithState = TodoItemWithIssueState(item: item, issueState: .closed)
 
-        model.toggleAlert = .presented(DoneTodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(item: item, itemWithState: itemWithState))
+        model.toggleAlert = .presented(
+            DoneTodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(
+                item: item, itemWithState: itemWithState))
         #expect(model.toggleAlert.isPresented == true)
 
         model.toggleAlert = .dismissed
@@ -195,7 +201,8 @@ struct DoneTodoListModelTests {
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let service = GitHubService()
         let issueOperationService = GitHubIssueOperationService(service: service)
-        let model = DoneTodoListModel(repository: repository, issueOperationService: issueOperationService)
+        let model = DoneTodoListModel(
+            repository: repository, issueOperationService: issueOperationService)
 
         await model.repository.addWithoutIssue(title: "Test", detail: "Detail")
         await model.repository.toggleDone(model.repository.activeTodos.first!)
@@ -217,7 +224,9 @@ struct DoneTodoListModelTests {
 
         let item = TodoItem(title: "Test", detail: "")
         let itemWithState = TodoItemWithIssueState(item: item, issueState: .closed)
-        model.toggleAlert = .presented(DoneTodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(item: item, itemWithState: itemWithState))
+        model.toggleAlert = .presented(
+            DoneTodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(
+                item: item, itemWithState: itemWithState))
 
         #expect(model.toggleAlert.context?.item.id == item.id)
 

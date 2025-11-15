@@ -71,7 +71,8 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol>: TodoLi
 
     func handleToggle(_ item: TodoItem) async {
         await handleToggleWithAlert(item) { [weak self] item, itemWithState in
-            self?.toggleAlert = .presented(ToggleAlertContext(item: item, itemWithState: itemWithState))
+            self?.toggleAlert = .presented(
+                ToggleAlertContext(item: item, itemWithState: itemWithState))
         }
     }
 
@@ -161,7 +162,8 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(role: .destructive) {
-                        model.deleteAllAlert = .presented(DoneTodoListModel<S, G>.DeleteAllContext())
+                        model.deleteAllAlert = .presented(
+                            DoneTodoListModel<S, G>.DeleteAllContext())
                     } label: {
                         Label("Delete All", systemImage: "trash")
                     }
@@ -169,10 +171,13 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 }
             }
         #endif
-        .alert("Delete All Done Todos", isPresented: Binding(
-            get: { model.deleteAllAlert.isPresented },
-            set: { if !$0 { model.deleteAllAlert = .dismissed } }
-        )) {
+        .alert(
+            "Delete All Done Todos",
+            isPresented: Binding(
+                get: { model.deleteAllAlert.isPresented },
+                set: { if !$0 { model.deleteAllAlert = .dismissed } }
+            )
+        ) {
             Button("Delete", role: .destructive) {
                 Task {
                     await model.deleteAllDoneTodos()
@@ -196,7 +201,8 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 ToggleAlertButtons(
                     issueState: context.itemWithState.issueState,
                     onToggleWithUpdate: { [context] stateReason in
-                        await model.toggleWithIssueUpdate(context: context, stateReason: stateReason)
+                        await model.toggleWithIssueUpdate(
+                            context: context, stateReason: stateReason)
                     },
                     onToggleWithoutUpdate: { [context] in
                         await model.toggleWithoutIssueUpdate(context: context)

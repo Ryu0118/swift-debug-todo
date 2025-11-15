@@ -90,7 +90,8 @@ struct TodoListModelTests {
         await model.loadActiveTodos()
         let updatedItem = model.displayedActiveTodos.first!
 
-        let context = TodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(item: updatedItem.item, itemWithState: updatedItem)
+        let context = TodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(
+            item: updatedItem.item, itemWithState: updatedItem)
         model.toggleAlert = .presented(context)
         await model.toggleWithIssueUpdate(context: context, stateReason: .completed)
 
@@ -112,7 +113,8 @@ struct TodoListModelTests {
         await model.loadActiveTodos()
         let updatedItem = model.displayedActiveTodos.first!
 
-        let context = TodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(item: updatedItem.item, itemWithState: updatedItem)
+        let context = TodoListModel<InMemoryStorage, MockGitHubIssueCreator>.ToggleAlertContext(
+            item: updatedItem.item, itemWithState: updatedItem)
         model.toggleAlert = .presented(context)
         await model.toggleWithoutIssueUpdate(context: context)
 
@@ -185,7 +187,8 @@ struct TodoListModelTests {
             for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = model.repository.activeTodos.first!
 
-        let context = TodoListModel<InMemoryStorage, MockGitHubIssueCreator>.DeleteAlertContext(item: updatedItem)
+        let context = TodoListModel<InMemoryStorage, MockGitHubIssueCreator>.DeleteAlertContext(
+            item: updatedItem)
         model.deleteAlert = .presented(context)
         await model.deleteWithoutClosingIssue(context: context)
 
@@ -205,7 +208,8 @@ struct TodoListModelTests {
             for: item.id, url: "https://github.com/test/repo/issues/1")
         let updatedItem = model.repository.activeTodos.first!
 
-        let context = TodoListModel<InMemoryStorage, MockGitHubIssueCreator>.DeleteAlertContext(item: updatedItem)
+        let context = TodoListModel<InMemoryStorage, MockGitHubIssueCreator>.DeleteAlertContext(
+            item: updatedItem)
         model.deleteAlert = .presented(context)
         await model.deleteAndCloseIssue(context: context, stateReason: .completed)
 

@@ -110,7 +110,8 @@ extension TodoListManaging {
         // Update GitHub issue state
         if let issueOperationService = issueOperationService {
             do {
-                try await issueOperationService.toggleIssueState(for: item, stateReason: stateReason)
+                try await issueOperationService.toggleIssueState(
+                    for: item, stateReason: stateReason)
                 issueOperationState = .succeeded
             } catch {
                 logger.error("Failed to update GitHub issue state: \(error)")

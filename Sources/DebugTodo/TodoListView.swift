@@ -75,7 +75,8 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol>: TodoListMa
 
     func handleToggle(_ item: TodoItem) async {
         await handleToggleWithAlert(item) { [weak self] item, itemWithState in
-            self?.toggleAlert = .presented(ToggleAlertContext(item: item, itemWithState: itemWithState))
+            self?.toggleAlert = .presented(
+                ToggleAlertContext(item: item, itemWithState: itemWithState))
         }
     }
 
@@ -100,7 +101,8 @@ final class TodoListModel<S: Storage, G: GitHubIssueCreatorProtocol>: TodoListMa
             let itemWithState = todosDataState.value?.first { $0.item.id == item.id }
 
             // Only show alert if issue is currently open or unknown (would need to close)
-            let shouldShowAlert = itemWithState?.issueState == .open || itemWithState?.issueState == nil
+            let shouldShowAlert =
+                itemWithState?.issueState == .open || itemWithState?.issueState == nil
             if shouldShowAlert {
                 deleteAlert = .presented(DeleteAlertContext(item: item))
             } else {
@@ -192,7 +194,6 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
         TodoListToolbarContent(model: model)
     }
 
-
     private var contentView: some View {
         Group {
             if case .loading = model.todosDataState, model.todosDataState.value == nil {
@@ -250,11 +251,14 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
             .toolbar {
                 toolbarContent
             }
-            .sheet(isPresented: $model.isShowingAddView, onDismiss: {
-                Task {
-                    await model.loadActiveTodos()
+            .sheet(
+                isPresented: $model.isShowingAddView,
+                onDismiss: {
+                    Task {
+                        await model.loadActiveTodos()
+                    }
                 }
-            }) {
+            ) {
                 AddEditTodoView(model: model.createAddEditModel())
             }
             .alert(
@@ -269,7 +273,8 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                     ToggleAlertButtons(
                         issueState: context.itemWithState.issueState,
                         onToggleWithUpdate: { [context] stateReason in
-                            await model.toggleWithIssueUpdate(context: context, stateReason: stateReason)
+                            await model.toggleWithIssueUpdate(
+                                context: context, stateReason: stateReason)
                         },
                         onToggleWithoutUpdate: { [context] in
                             await model.toggleWithoutIssueUpdate(context: context)
@@ -288,14 +293,18 @@ public struct TodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                     }
                 }
             }
-            .alert("Delete Todo?", isPresented: Binding(
-                get: { model.deleteAlert.isPresented },
-                set: { if !$0 { model.deleteAlert = .dismissed } }
-            )) {
+            .alert(
+                "Delete Todo?",
+                isPresented: Binding(
+                    get: { model.deleteAlert.isPresented },
+                    set: { if !$0 { model.deleteAlert = .dismissed } }
+                )
+            ) {
                 if let context = model.deleteAlert.context {
                     DeleteAlertButtons(
                         onDeleteAndClose: { [context] stateReason in
-                            await model.deleteAndCloseIssue(context: context, stateReason: stateReason)
+                            await model.deleteAndCloseIssue(
+                                context: context, stateReason: stateReason)
                         },
                         onDeleteOnly: { [context] in
                             await model.deleteWithoutClosingIssue(context: context)

@@ -38,7 +38,8 @@ final class GitHubIssueOperationService {
         )
 
         logger.debug(
-            "Updated issue #\(issueNumber) from \(currentIssue.state) to \(newState) with reason: \(stateReason?.rawValue ?? "nil")")
+            "Updated issue #\(issueNumber) from \(currentIssue.state) to \(newState) with reason: \(stateReason?.rawValue ?? "nil")"
+        )
     }
 
     /// Closes the GitHub issue for a todo item

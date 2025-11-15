@@ -1,6 +1,7 @@
 import SwiftUI
+
 #if canImport(UIKit)
-import FullscreenPopup
+    import FullscreenPopup
 #endif
 
 extension View {
@@ -29,29 +30,31 @@ extension View {
         for state: IssueOperationState<ErrorType>
     ) -> some View {
         #if os(macOS)
-        self
-            .disabled(state.isInProgress)
-            .blur(radius: state.isInProgress ? 3 : 0)
-            .overlay {
-                if state.isInProgress {
-                    ZStack {
-                        Color.black.opacity(0.3)
-                            .ignoresSafeArea()
-                        ProgressView()
+            self
+                .disabled(state.isInProgress)
+                .blur(radius: state.isInProgress ? 3 : 0)
+                .overlay {
+                    if state.isInProgress {
+                        ZStack {
+                            Color.black.opacity(0.3)
+                                .ignoresSafeArea()
+                            ProgressView()
+                        }
                     }
                 }
-            }
         #elseif canImport(UIKit)
-        self
-            .popup(isPresented: Binding(
-                get: { state.isInProgress },
-                set: { _ in }
-            )) {
-                ProgressView()
-                    .scaleEffect(2)
-            }
+            self
+                .popup(
+                    isPresented: Binding(
+                        get: { state.isInProgress },
+                        set: { _ in }
+                    )
+                ) {
+                    ProgressView()
+                        .scaleEffect(2)
+                }
         #else
-        self
+            self
         #endif
     }
 }

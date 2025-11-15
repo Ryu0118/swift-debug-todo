@@ -64,7 +64,8 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
                         } catch {
                             // Log error on main actor
                             await MainActor.run {
-                                logger.error("Failed to fetch issue state for #\(issueNumber): \(error)")
+                                logger.error(
+                                    "Failed to fetch issue state for #\(issueNumber): \(error)")
                             }
                             // On error, return item without state
                             return (item.id, TodoItemWithIssueState(item: item, issueState: nil))

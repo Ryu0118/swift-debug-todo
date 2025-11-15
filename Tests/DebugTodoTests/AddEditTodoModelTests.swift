@@ -210,7 +210,8 @@ struct AddEditTodoModelTests {
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
-        model.createIssueAlert = .presented(AddEditTodoModel<InMemoryStorage, MockGitHubIssueCreator>.CreateIssueAlertContext())
+        model.createIssueAlert = .presented(
+            AddEditTodoModel<InMemoryStorage, MockGitHubIssueCreator>.CreateIssueAlertContext())
         #expect(model.createIssueAlert.isPresented)
 
         model.createIssueAlert = .dismissed

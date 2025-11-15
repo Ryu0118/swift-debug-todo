@@ -1,6 +1,7 @@
 import SwiftUI
+
 #if canImport(UIKit)
-import FullscreenPopup
+    import FullscreenPopup
 #endif
 
 @MainActor
@@ -118,8 +119,7 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     ///   - A confirmation alert needs to be shown (`showConfirmationAlert` is enabled)
     ///   - An error occurred while creating a GitHub issue (sets `issueCreationState`)
     private func addNewItemIfNeeded() async -> Bool {
-        if let repositorySettings = repositorySettings, repositorySettings.showConfirmationAlert
-        {
+        if let repositorySettings = repositorySettings, repositorySettings.showConfirmationAlert {
             createIssueAlert = .presented(CreateIssueAlertContext())
             return false
         } else {
@@ -140,23 +140,30 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     private func validateSettings() -> Bool {
         guard let service = service else {
-            issueCreationState = .failed(.githubError(.incompleteSettings("GitHub service is not configured")))
+            issueCreationState = .failed(
+                .githubError(.incompleteSettings("GitHub service is not configured")))
             return false
         }
 
         let settings = service.repositorySettings
         if settings.owner.isEmpty {
-            issueCreationState = .failed(.githubError(.incompleteSettings("GitHub owner is not configured")))
+            issueCreationState = .failed(
+                .githubError(.incompleteSettings("GitHub owner is not configured")))
             return false
         }
         if settings.repo.isEmpty {
-            issueCreationState = .failed(.githubError(.incompleteSettings("GitHub repository is not configured")))
+            issueCreationState = .failed(
+                .githubError(.incompleteSettings("GitHub repository is not configured")))
             return false
         }
         if service.credentials.accessToken == nil
             || service.credentials.accessToken?.isEmpty == true
         {
-            issueCreationState = .failed(.githubError(.authenticationError("GitHub Personal Access Token is not saved. Please save your settings first.")))
+            issueCreationState = .failed(
+                .githubError(
+                    .authenticationError(
+                        "GitHub Personal Access Token is not saved. Please save your settings first."
+                    )))
             return false
         }
 
@@ -276,13 +283,15 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 }
             }
             #if canImport(UIKit)
-            .popup(isPresented: Binding(
-                get: { model.issueCreationState.isInProgress },
-                set: { _ in }
-            )) {
-                ProgressView()
+                .popup(
+                    isPresented: Binding(
+                        get: { model.issueCreationState.isInProgress },
+                        set: { _ in }
+                    )
+                ) {
+                    ProgressView()
                     .scaleEffect(2)
-            }
+                }
             #endif
         }
     }
