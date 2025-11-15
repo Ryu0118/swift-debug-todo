@@ -1,5 +1,6 @@
 import DebugTodo
 import SwiftUI
+internal import Logging
 
 @MainActor
 @Observable
@@ -24,7 +25,8 @@ struct GitHubIntegrationView: View {
                 userDefaults: .standard,
                 key: "debugtodos"
             ),
-            service: model.service
+            service: model.service,
+            logLevel: .trace
         )
         .navigationTitle("GitHub Integration")
     }

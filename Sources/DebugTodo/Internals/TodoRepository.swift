@@ -7,13 +7,20 @@ import Observation
 final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
     private let storage: S
     let issueCreator: G
+    private var service: GitHubService?
     private(set) var items: [TodoItem] = []
     private(set) var lastCreatedIssue: GitHubIssue?
     private(set) var lastError: Error?
 
-    init(storage: S, issueCreator: G) {
+    init(storage: S, issueCreator: G, service: GitHubService? = nil) {
         self.storage = storage
         self.issueCreator = issueCreator
+        self.service = service
+    }
+
+    /// Sets the GitHub service for fetching issue states.
+    func setService(_ service: GitHubService?) {
+        self.service = service
     }
 
     func loadFromStorage() async {
@@ -30,18 +37,69 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
+    /// Fetches items with their GitHub issue states.
+    ///
+    /// - Returns: Array of TodoItemWithIssueState containing items and their issue states.
+    func fetchItemsWithIssueStates() async -> [TodoItemWithIssueState] {
+        guard let service = service else {
+            // No service available, return items without issue states
+            return items.map { TodoItemWithIssueState(item: $0, issueState: nil) }
+        }
+
+        // Use withTaskGroup for parallel fetching of issue states
+        return await withTaskGroup(of: (UUID, TodoItemWithIssueState).self) { group in
+            // Add tasks for each item
+            for item in items {
+                group.addTask {
+                    if let issueNumber = item.gitHubIssueNumber {
+                        // Fetch the issue state from GitHub API
+                        do {
+                            let issue = try await service.issueCreator.getIssue(
+                                owner: service.repositorySettings.owner,
+                                repo: service.repositorySettings.repo,
+                                issueNumber: issueNumber
+                            )
+                            let state = GitHubIssueState(rawValue: issue.state)
+                            return (item.id, TodoItemWithIssueState(item: item, issueState: state))
+                        } catch {
+                            // Log error on main actor
+                            await MainActor.run {
+                                logger.error("Failed to fetch issue state for #\(issueNumber): \(error)")
+                            }
+                            // On error, return item without state
+                            return (item.id, TodoItemWithIssueState(item: item, issueState: nil))
+                        }
+                    } else {
+                        // No issue linked, return item without state
+                        return (item.id, TodoItemWithIssueState(item: item, issueState: nil))
+                    }
+                }
+            }
+
+            // Collect results in a dictionary to maintain original order
+            var resultsDict: [UUID: TodoItemWithIssueState] = [:]
+            for await (id, itemWithState) in group {
+                resultsDict[id] = itemWithState
+            }
+
+            // Return items in original order
+            return items.compactMap { resultsDict[$0.id] }
+        }
+    }
+
     func add(
         title: String, detail: String = "", createIssue: Bool = true
     ) async throws {
         let item = TodoItem(title: title, detail: detail)
-        items.append(item)
-        await saveItems()
 
         // Trigger GitHub issue creation if enabled
         if createIssue {
             do {
                 let issue = try await issueCreator.onTodoCreated(item)
                 lastCreatedIssue = issue
+                // Only save to storage after successful issue creation
+                items.append(item)
+                await saveItems()
                 if let issue = issue {
                     await updateGitHubIssueUrl(for: item.id, url: issue.htmlUrl)
                 }
@@ -50,6 +108,10 @@ final class TodoRepository<S: Storage, G: GitHubIssueCreatorProtocol> {
                 logger.error("Failed to create GitHub issue", metadata: ["error": "\(error)"])
                 throw error
             }
+        } else {
+            // No issue creation requested, save directly
+            items.append(item)
+            await saveItems()
         }
     }
 

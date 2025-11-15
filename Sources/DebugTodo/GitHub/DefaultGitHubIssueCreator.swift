@@ -4,19 +4,19 @@ import Foundation
 @MainActor
 public final class GitHubIssueCreator: GitHubIssueCreatorProtocol, @unchecked Sendable {
     private let apiClient = GitHubAPIClient()
-    private let repositorySettings: GitHubRepositorySettings
+    private let getRepositorySettings: () -> GitHubRepositorySettings
     private let credentials: GitHubCredentials
 
     /// Creates a new GitHub issue creator.
     ///
     /// - Parameters:
-    ///   - repositorySettings: The GitHub repository settings.
+    ///   - getRepositorySettings: Closure that returns the current repository settings.
     ///   - credentials: The GitHub credentials.
     public init(
-        repositorySettings: GitHubRepositorySettings,
+        getRepositorySettings: @escaping () -> GitHubRepositorySettings,
         credentials: GitHubCredentials
     ) {
-        self.repositorySettings = repositorySettings
+        self.getRepositorySettings = getRepositorySettings
         self.credentials = credentials
     }
 
@@ -25,6 +25,8 @@ public final class GitHubIssueCreator: GitHubIssueCreatorProtocol, @unchecked Se
     }
 
     public func createIssue(for item: TodoItem) async throws -> GitHubIssue? {
+        let repositorySettings = getRepositorySettings()
+
         guard repositorySettings.isValid else {
             throw GitHubIssueCreatorError.invalidConfiguration
         }
@@ -60,7 +62,7 @@ public final class GitHubIssueCreator: GitHubIssueCreatorProtocol, @unchecked Se
         repo: String,
         issueNumber: Int,
         state: String,
-        stateReason: String?
+        stateReason: IssueStateReason?
     ) async throws -> GitHubIssue {
         guard let token = credentials.accessToken else {
             throw GitHubIssueCreatorError.notAuthenticated
@@ -107,6 +109,33 @@ public final class GitHubIssueCreator: GitHubIssueCreatorProtocol, @unchecked Se
             issueNumber: issueNumber,
             title: title,
             body: body
+        )
+
+        return issue
+    }
+
+    /// Gets a GitHub issue by its number.
+    ///
+    /// - Parameters:
+    ///   - owner: The repository owner.
+    ///   - repo: The repository name.
+    ///   - issueNumber: The issue number.
+    /// - Returns: The GitHub issue.
+    public func getIssue(
+        owner: String,
+        repo: String,
+        issueNumber: Int
+    ) async throws -> GitHubIssue {
+        guard let token = credentials.accessToken else {
+            throw GitHubIssueCreatorError.notAuthenticated
+        }
+
+        await apiClient.setAccessToken(token)
+
+        let issue = try await apiClient.getIssue(
+            owner: owner,
+            repo: repo,
+            issueNumber: issueNumber
         )
 
         return issue

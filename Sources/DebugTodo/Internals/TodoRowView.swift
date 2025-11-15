@@ -6,15 +6,16 @@ final class TodoRowModel {
     let item: TodoItem
     let onToggle: () -> Void
     let effectiveDoneState: Bool
+    let issueState: GitHubIssueState?
 
-    init(item: TodoItem, onToggle: @escaping () -> Void, effectiveDoneState: Bool? = nil) {
+    init(item: TodoItem, onToggle: @escaping () -> Void, effectiveDoneState: Bool? = nil, issueState: GitHubIssueState? = nil) {
         self.item = item
         self.onToggle = onToggle
         self.effectiveDoneState = effectiveDoneState ?? item.isDone
+        self.issueState = issueState
     }
 }
 
-@available(iOS 17.0, macOS 14.0, visionOS 1.0, macCatalyst 17.0, *)
 struct TodoRowView: View {
     @Environment(\.openURL) private var openURL
 
@@ -49,9 +50,15 @@ struct TodoRowView: View {
                                 openURL(url)
                             }
                         } label: {
-                            Text("#\(issueNumber)")
-                                .font(.caption)
-                                .foregroundStyle(.blue)
+                            if let state = model.issueState {
+                                Text("#\(issueNumber) (\(state.displayText))")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                            } else {
+                                Text("#\(issueNumber)")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                            }
                         }
                         .buttonStyle(.plain)
                     }

@@ -4,22 +4,67 @@ import SwiftUI
 @MainActor
 @Observable
 public final class GitHubSettingsModel {
-    var service: GitHubService
-    var errorMessage: String?
-    var showSuccess = false
+    let service: GitHubService
+    var saveOperationState: IssueOperationState<TodoError> = .idle
+    var showSuccessAlert = false
+
+    // Local editing state (not persisted until saved)
+    var editingToken: String = ""
+    var editingOwner: String = ""
+    var editingRepo: String = ""
+    var editingShowConfirmationAlert: Bool = true
+
+    private var hasLoadedInitialSettings = false
 
     public init(service: GitHubService) {
         self.service = service
     }
 
+    func loadCurrentSettings() {
+        // Only load if we haven't loaded yet, to avoid clearing user input
+        guard !hasLoadedInitialSettings else { return }
+
+        editingToken = service.credentials.accessToken ?? ""
+        editingOwner = service.repositorySettings.owner
+        editingRepo = service.repositorySettings.repo
+        editingShowConfirmationAlert = service.repositorySettings.showConfirmationAlert
+        hasLoadedInitialSettings = true
+    }
+
+    func resetToSavedSettings() {
+        editingToken = service.credentials.accessToken ?? ""
+        editingOwner = service.repositorySettings.owner
+        editingRepo = service.repositorySettings.repo
+        editingShowConfirmationAlert = service.repositorySettings.showConfirmationAlert
+    }
+
+    var isValid: Bool {
+        !editingOwner.isEmpty && !editingRepo.isEmpty
+    }
+
     func saveConfiguration() async {
+        saveOperationState = .inProgress
+
         do {
+            // Update service with edited values
+            service.repositorySettings.owner = editingOwner
+            service.repositorySettings.repo = editingRepo
+            service.repositorySettings.showConfirmationAlert = editingShowConfirmationAlert
+
             try await service.saveRepositorySettings()
-            try await service.credentials.saveToken()
-            showSuccess = true
+            try await service.credentials.saveToken(editingToken)
+
+            saveOperationState = .succeeded
+            showSuccessAlert = true
         } catch {
-            errorMessage = "Failed to save configuration: \(error.localizedDescription)"
+            let todoError = TodoError.storageError(error.localizedDescription)
+            saveOperationState = .failed(todoError)
         }
+    }
+
+    func clearToken() async {
+        await service.credentials.signOut()
+        resetToSavedSettings()
     }
 }
 
@@ -34,14 +79,12 @@ public struct GitHubSettingsView: View {
     public var body: some View {
         Form {
             Section {
-                SecureField(
-                    "Personal Access Token", text: $model.service.credentials.personalAccessToken
-                )
-                .autocorrectionDisabled()
-                #if os(iOS) || os(visionOS)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.asciiCapable)
-                #endif
+                SecureField("Personal Access Token", text: $model.editingToken)
+                    .autocorrectionDisabled()
+                    #if os(iOS) || os(visionOS)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.asciiCapable)
+                    #endif
 
                 if model.service.credentials.isAuthenticated {
                     HStack {
@@ -50,7 +93,9 @@ public struct GitHubSettingsView: View {
                         Text("Token Saved")
                         Spacer()
                         Button("Clear", role: .destructive) {
-                            model.service.credentials.signOut()
+                            Task {
+                                await model.clearToken()
+                            }
                         }
                     }
                 }
@@ -63,25 +108,25 @@ public struct GitHubSettingsView: View {
             }
 
             Section {
-                TextField("Owner", text: $model.service.repositorySettings.owner)
+                TextField("Owner", text: $model.editingOwner)
                     .autocorrectionDisabled()
                     #if os(iOS) || os(visionOS)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.asciiCapable)
                     #endif
 
-                TextField("Repository", text: $model.service.repositorySettings.repo)
+                TextField("Repository", text: $model.editingRepo)
                     .autocorrectionDisabled()
                     #if os(iOS) || os(visionOS)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.asciiCapable)
                     #endif
 
-                if model.service.repositorySettings.isValid {
+                if model.isValid {
                     HStack {
                         Text("Full name:")
                         Spacer()
-                        Text(model.service.repositorySettings.fullName)
+                        Text("\(model.editingOwner)/\(model.editingRepo)")
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -94,40 +139,47 @@ public struct GitHubSettingsView: View {
             Section {
                 Toggle(
                     "Confirm Before Creating Issue",
-                    isOn: $model.service.repositorySettings.showConfirmationAlert)
+                    isOn: $model.editingShowConfirmationAlert
+                )
             } header: {
                 Text("Options")
             } footer: {
                 Text("Show alert before creating a GitHub issue.")
             }
-
-            Section {
+        }
+        .navigationTitle("GitHub Settings")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
                 Button("Save") {
                     Task {
                         await model.saveConfiguration()
                     }
                 }
-                .disabled(!model.service.repositorySettings.isValid)
+                .disabled(!model.isValid || model.saveOperationState.isInProgress)
             }
         }
-        .navigationTitle("GitHub Settings")
+        .onAppear {
+            model.loadCurrentSettings()
+        }
         .alert(
             "Error",
             isPresented: Binding(
-                get: { model.errorMessage != nil },
-                set: { if !$0 { model.errorMessage = nil } }
+                get: { model.saveOperationState.error != nil },
+                set: { if !$0 { model.saveOperationState = .idle } }
             )
         ) {
             Button("OK", role: .cancel) {
-                model.errorMessage = nil
+                model.saveOperationState = .idle
             }
         } message: {
-            if let errorMessage = model.errorMessage {
-                Text(errorMessage)
+            if let error = model.saveOperationState.error {
+                Text(error.localizedDescription)
             }
         }
-        .alert("Saved", isPresented: $model.showSuccess) {
-            Button("OK", role: .cancel) {}
+        .alert("Saved", isPresented: $model.showSuccessAlert) {
+            Button("OK", role: .cancel) {
+                model.saveOperationState = .idle
+            }
         } message: {
             Text("GitHub settings saved successfully")
         }

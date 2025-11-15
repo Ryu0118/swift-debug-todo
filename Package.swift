@@ -18,13 +18,15 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.6.2")
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.6.2"),
+        .package(url: "https://github.com/Ryu0118/swift-fullscreen-popup", exact: "0.3.0")
     ],
     targets: [
         .target(
             name: "DebugTodo",
             dependencies: [
-                .product(name: "Logging", package: "swift-log")
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "FullscreenPopup", package: "swift-fullscreen-popup", condition: .when(platforms: [.iOS, .visionOS, .macCatalyst]))
             ]
         ),
         .testTarget(

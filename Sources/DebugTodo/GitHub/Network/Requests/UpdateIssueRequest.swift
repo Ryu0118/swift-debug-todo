@@ -9,7 +9,7 @@ struct UpdateIssueRequest: APIRequest {
     let title: String?
     let issueBody: String?
     let state: String?
-    let stateReason: String?
+    let stateReason: IssueStateReason?
     let token: String
 
     var url: String {
@@ -34,7 +34,7 @@ struct UpdateIssueRequest: APIRequest {
                 title: title,
                 body: issueBody,
                 state: state,
-                stateReason: stateReason
+                stateReason: stateReason?.apiValue
             ))
     }
 

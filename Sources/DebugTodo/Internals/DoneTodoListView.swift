@@ -3,42 +3,48 @@ import SwiftUI
 @MainActor
 @Observable
 final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
+    struct DeleteAllContext: Equatable {}
+    struct ToggleAlertContext: Equatable {
+        let item: TodoItem
+        let itemWithState: TodoItemWithIssueState
+    }
+
     let repository: TodoRepository<S, G>
     let repositorySettings: GitHubRepositorySettings?
     let service: GitHubService?
 
-    #if os(iOS)
-        var editMode: EditMode = .inactive
-    #endif
-    var showDeleteAllAlert = false
-    var showReopenAlert = false
-    var pendingReopenItem: TodoItem?
+    // State management
+    var todosDataState: DataState<[TodoItemWithIssueState], TodoError> = .idle
+    var issueOperationState: IssueOperationState<TodoError> = .idle
+    var deleteAllAlert: AlertState<DeleteAllContext> = .dismissed
+    var toggleAlert: AlertState<ToggleAlertContext> = .dismissed
 
     // Child models
     var addEditModel: AddEditTodoModel<S, G>?
 
-    // In-memory set to track toggled item IDs (items whose done state has changed)
+    // In-memory set to track toggled item IDs (to keep them visible in current session)
     private(set) var toggledItemIDs: Set<TodoItem.ID> = []
 
     // In-memory set to track deleted item IDs (items that should be hidden)
     private(set) var deletedItemIDs: Set<TodoItem.ID> = []
 
     // Computed property to get displayed done todos
-    var displayedDoneTodos: [TodoItem] {
+    var displayedDoneTodos: [TodoItemWithIssueState] {
         // Explicitly reference both dependencies to ensure proper observation
-        let allItems = repository.items
+        let allItemsWithStates = todosDataState.value ?? []
         let toggledIDs = toggledItemIDs
         let deletedIDs = deletedItemIDs
 
         return
-            allItems
-            .filter { item in
-                // Include if: (done and not deleted) OR (active and toggled and not deleted)
-                (item.isDone && !deletedIDs.contains(item.id))
+            allItemsWithStates
+            .filter { itemWithState in
+                let item = itemWithState.item
+                // Include if: (done and not deleted) OR (active and toggled in this session and not deleted)
+                return (item.isDone && !deletedIDs.contains(item.id))
                     || (!item.isDone && toggledIDs.contains(item.id)
                         && !deletedIDs.contains(item.id))
             }
-            .sorted { $0.createdAt > $1.createdAt }
+            .sorted { $0.item.createdAt > $1.item.createdAt }
     }
 
     // Check if an item's done state has been toggled in-memory
@@ -46,19 +52,15 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         toggledItemIDs.contains(item.id)
     }
 
-    // Get the effective done state for display (considering in-memory toggles)
-    func effectiveDoneState(for item: TodoItem) -> Bool {
-        // Simply return the item's current isDone state from repository
-        // The item displayed in the list already reflects the repository state
-        return item.isDone
-    }
-
     func loadDoneTodos() async {
+        todosDataState = .loading(todosDataState.value)
+
         // Load items from storage first
         await repository.loadFromStorage()
-        // Clear in-memory state
-        toggledItemIDs.removeAll()
-        deletedItemIDs.removeAll()
+        // Fetch items with their issue states
+        let items = await repository.fetchItemsWithIssueStates()
+
+        todosDataState = .loaded(items)
     }
 
     func refresh() async {
@@ -82,11 +84,35 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         }
     }
 
-    func handleReopen(_ item: TodoItem) async {
-        // Always show alert if item has a linked GitHub issue
-        if item.gitHubIssueUrl != nil {
-            pendingReopenItem = item
-            showReopenAlert = true
+    func handleToggle(_ item: TodoItem) async {
+        // Find the corresponding TodoItemWithIssueState from todosDataState
+        let itemWithState = todosDataState.value?.first { $0.item.id == item.id }
+
+        // Show alert only if item has a linked GitHub issue AND the action would change the issue state
+        if item.gitHubIssueUrl != nil, let itemWithState = itemWithState {
+            // Determine if we need to show alert based on desired state change
+            let wouldChangeIssueState: Bool
+            if item.isDone {
+                // Unchecking: only show alert if issue is currently closed (would need to reopen)
+                wouldChangeIssueState = (itemWithState.issueState == .closed)
+            } else {
+                // Checking: only show alert if issue is currently open (would need to close)
+                wouldChangeIssueState = (itemWithState.issueState == .open)
+            }
+
+            if wouldChangeIssueState {
+                toggleAlert = .presented(ToggleAlertContext(item: item, itemWithState: itemWithState))
+            } else {
+                // Issue is already in desired state, perform toggle without showing alert
+                if toggledItemIDs.contains(item.id) {
+                    toggledItemIDs.remove(item.id)
+                } else {
+                    toggledItemIDs.insert(item.id)
+                }
+                await repository.toggleDone(item)
+                let items = await repository.fetchItemsWithIssueStates()
+                todosDataState = .loaded(items)
+            }
         } else {
             // Toggle the in-memory state
             if toggledItemIDs.contains(item.id) {
@@ -96,50 +122,81 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             }
             // Update repository
             await repository.toggleDone(item)
+
+            // Refresh issue states after toggle
+            let items = await repository.fetchItemsWithIssueStates()
+            todosDataState = .loaded(items)
         }
     }
 
-    func reopenWithoutIssueUpdate() async {
-        guard let item = pendingReopenItem else { return }
-        // Toggle the in-memory state
-        if toggledItemIDs.contains(item.id) {
-            toggledItemIDs.remove(item.id)
-        } else {
-            toggledItemIDs.insert(item.id)
-        }
+    func toggleWithoutIssueUpdate(context: ToggleAlertContext) async {
+        let item = context.item
+
+        // Mark item to keep visible in current session
+        toggledItemIDs.insert(item.id)
+
         // Update repository
         await repository.toggleDone(item)
-        pendingReopenItem = nil
+
+        // Refresh issue states after toggle (toggledItemIDs keeps item visible)
+        let items = await repository.fetchItemsWithIssueStates()
+        todosDataState = .loaded(items)
+        toggleAlert = .dismissed
     }
 
-    func reopenWithIssueUpdate() async {
-        guard let item = pendingReopenItem else { return }
-        // Toggle the in-memory state
-        if toggledItemIDs.contains(item.id) {
-            toggledItemIDs.remove(item.id)
-        } else {
-            toggledItemIDs.insert(item.id)
-        }
+    func toggleWithIssueUpdate(context: ToggleAlertContext, stateReason: IssueStateReason?) async {
+        let item = context.item
+
+        issueOperationState = .inProgress
+
+        // Mark item to keep visible in current session
+        toggledItemIDs.insert(item.id)
+
         // Update repository
         await repository.toggleDone(item)
-        pendingReopenItem = nil
+
+        // Update GitHub issue state by fetching current state from API
+        do {
+            try await updateIssueStateFromAPI(item: item, stateReason: stateReason)
+            issueOperationState = .succeeded
+        } catch {
+            logger.error("Failed to update GitHub issue state: \(error)")
+            let todoError = mapError(error)
+            issueOperationState = .failed(todoError)
+        }
+
+        // Refresh issue states after toggle (toggledItemIDs keeps item visible)
+        let items = await repository.fetchItemsWithIssueStates()
+        todosDataState = .loaded(items)
+        toggleAlert = .dismissed
     }
 
-    func reopenGitHubIssue(item: TodoItem) async throws {
+    private func updateIssueStateFromAPI(item: TodoItem, stateReason: IssueStateReason?) async throws {
         guard let service = service,
             let issueNumber = item.gitHubIssueNumber
         else {
             return
         }
 
+        // Fetch current issue state from GitHub API
+        let currentIssue = try await service.issueCreator.getIssue(
+            owner: service.repositorySettings.owner,
+            repo: service.repositorySettings.repo,
+            issueNumber: issueNumber
+        )
+
+        // Determine new state based on current GitHub state
+        let newState = currentIssue.state == "open" ? "closed" : "open"
+
         _ = try await service.issueCreator.updateIssueState(
             owner: service.repositorySettings.owner,
             repo: service.repositorySettings.repo,
             issueNumber: issueNumber,
-            state: "open",
-            stateReason: nil
+            state: newState,
+            stateReason: stateReason
         )
-        logger.debug("Reopened issue #\(issueNumber)")
+        logger.debug(
+            "Updated issue #\(issueNumber) from \(currentIssue.state) to \(newState) with reason: \(stateReason?.rawValue ?? "nil")")
     }
 
     func handleDelete(_ item: TodoItem) async {
@@ -156,6 +213,13 @@ final class DoneTodoListModel<S: Storage, G: GitHubIssueCreatorProtocol> {
             editingItem: editingItem
         )
     }
+
+    private func mapError(_ error: Error) -> TodoError {
+        if let todoError = error as? TodoError {
+            return todoError
+        }
+        return .unknown(error.localizedDescription)
+    }
 }
 
 struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
@@ -171,7 +235,8 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 )
             } else {
                 List {
-                    ForEach(model.displayedDoneTodos) { item in
+                    ForEach(model.displayedDoneTodos) { itemWithState in
+                        let item = itemWithState.item
                         NavigationLink {
                             AddEditTodoView(model: model.createAddEditModel(editingItem: item))
                         } label: {
@@ -180,35 +245,29 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                                     item: item,
                                     onToggle: {
                                         Task {
-                                            await model.handleReopen(item)
+                                            await model.handleToggle(item)
                                         }
                                     },
-                                    effectiveDoneState: model.effectiveDoneState(for: item)
+                                    effectiveDoneState: item.isDone,
+                                    issueState: itemWithState.issueState
                                 )
                             )
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button {
                                 Task {
                                     await model.handleDelete(item)
                                 }
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
+                            .tint(.red)
                         }
                         .transition(
                             .asymmetric(
                                 insertion: .move(edge: .leading).combined(with: .opacity),
                                 removal: .move(edge: .trailing).combined(with: .opacity)
                             ))
-                    }
-                    .onDelete { indexSet in
-                        Task {
-                            for index in indexSet {
-                                let item = model.displayedDoneTodos[index]
-                                await model.handleDelete(item)
-                            }
-                        }
                     }
                 }
             }
@@ -224,51 +283,60 @@ struct DoneTodoListView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(role: .destructive) {
-                        model.showDeleteAllAlert = true
+                        model.deleteAllAlert = .presented(DoneTodoListModel<S, G>.DeleteAllContext())
                     } label: {
                         Label("Delete All", systemImage: "trash")
                     }
                     .disabled(model.displayedDoneTodos.isEmpty)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    EditButton()
-                }
             }
-            .environment(\.editMode, $model.editMode)
         #endif
-        .alert("Delete All Done Todos", isPresented: $model.showDeleteAllAlert) {
+        .alert("Delete All Done Todos", isPresented: Binding(
+            get: { model.deleteAllAlert.isPresented },
+            set: { if !$0 { model.deleteAllAlert = .dismissed } }
+        )) {
             Button("Delete", role: .destructive) {
                 Task {
                     await model.deleteAllDoneTodos()
                 }
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) {
+                model.deleteAllAlert = .dismissed
+            }
         } message: {
             Text("Are you sure you want to delete all done todos? This action cannot be undone.")
         }
-        .alert("Reopen GitHub Issue?", isPresented: $model.showReopenAlert) {
-            Button("Uncheck & Reopen") {
-                if let item = model.pendingReopenItem {
-                    Task {
-                        await model.reopenWithIssueUpdate()
-                        do {
-                            try await model.reopenGitHubIssue(item: item)
-                        } catch {
-                            logger.error("Failed to reopen GitHub issue: \(error)")
-                        }
+        .alert(
+            model.toggleAlert.context?.itemWithState.issueState == .open
+                ? "Close GitHub Issue?" : "Reopen GitHub Issue?",
+            isPresented: Binding(
+                get: { model.toggleAlert.isPresented },
+                set: { if !$0 { model.toggleAlert = .dismissed } }
+            )
+        ) {
+            if let context = model.toggleAlert.context {
+                ToggleAlertButtons(
+                    issueState: context.itemWithState.issueState,
+                    onToggleWithUpdate: { [context] stateReason in
+                        await model.toggleWithIssueUpdate(context: context, stateReason: stateReason)
+                    },
+                    onToggleWithoutUpdate: { [context] in
+                        await model.toggleWithoutIssueUpdate(context: context)
+                    },
+                    onCancel: {
+                        model.toggleAlert = .dismissed
                     }
-                }
-            }
-            Button("Uncheck Only") {
-                Task {
-                    await model.reopenWithoutIssueUpdate()
-                }
-            }
-            Button("Cancel", role: .cancel) {
-                model.pendingReopenItem = nil
+                )
             }
         } message: {
-            Text("This will reopen the linked GitHub issue.")
+            if let context = model.toggleAlert.context {
+                if context.itemWithState.issueState == .open {
+                    Text("This will close the linked GitHub issue. Choose a reason:")
+                } else {
+                    Text("This will reopen the linked GitHub issue.")
+                }
+            }
         }
+        .issueOperationOverlay(for: model.issueOperationState)
     }
 }

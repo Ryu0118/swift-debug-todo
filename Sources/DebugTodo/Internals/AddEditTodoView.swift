@@ -1,8 +1,13 @@
 import SwiftUI
+#if canImport(UIKit)
+import FullscreenPopup
+#endif
 
 @MainActor
 @Observable
 final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
+    struct CreateIssueAlertContext: Equatable {}
+
     let repository: TodoRepository<S, G>
     let repositorySettings: GitHubRepositorySettings?
     let service: GitHubService?
@@ -10,12 +15,14 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
 
     var title: String
     var detail: String
-    var showCreateIssueAlert = false
-    var errorMessage: String?
+    var createIssueAlert: AlertState<CreateIssueAlertContext> = .dismissed
+    var issueCreationState: IssueOperationState<TodoError> = .idle
 
     init(
-        repository: TodoRepository<S, G>, repositorySettings: GitHubRepositorySettings? = nil,
-        service: GitHubService? = nil, editingItem: TodoItem? = nil
+        repository: TodoRepository<S, G>,
+        repositorySettings: GitHubRepositorySettings? = nil,
+        service: GitHubService? = nil,
+        editingItem: TodoItem? = nil
     ) {
         self.repository = repository
         self.repositorySettings = repositorySettings
@@ -25,36 +32,47 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
         self.detail = editingItem?.detail ?? ""
     }
 
+    /// Saves the todo item (either updating an existing item or adding a new one).
+    ///
+    /// - Returns: `true` if the item was saved successfully, `false` if:
+    ///   - The title is empty or whitespace-only
+    ///   - A confirmation alert needs to be shown (new item with `showConfirmationAlert` enabled)
+    ///   - An error occurred while creating a GitHub issue
     func save() async -> Bool {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return false }
 
         if let editingItem {
-            // Update existing item
-            var updatedItem = editingItem
-            updatedItem.title = trimmedTitle
-            updatedItem.detail = detail
-            await repository.update(updatedItem)
-            return true
+            return await updateExistingItem(editingItem, trimmedTitle: trimmedTitle)
         } else {
-            // Add new item - check if confirmation is needed
-            if let repositorySettings = repositorySettings, repositorySettings.showConfirmationAlert
-            {
-                showCreateIssueAlert = true
-                return false
-            } else {
-                do {
-                    try await repository.add(title: trimmedTitle, detail: detail, createIssue: true)
-                    return true
-                } catch {
-                    errorMessage = error.localizedDescription
-                    return false
-                }
-            }
+            return await addNewItemIfNeeded()
         }
     }
 
-    func updateGitHubIssue() async throws {
+    private func updateExistingItem(_ item: TodoItem, trimmedTitle: String) async -> Bool {
+        var updatedItem = item
+        updatedItem.title = trimmedTitle
+        updatedItem.detail = detail
+        await repository.update(updatedItem)
+
+        // Update GitHub issue if linked
+        if item.gitHubIssueUrl != nil {
+            issueCreationState = .inProgress
+
+            do {
+                try await updateGitHubIssue()
+                issueCreationState = .succeeded
+            } catch {
+                let todoError = mapError(error)
+                issueCreationState = .failed(todoError)
+                return false
+            }
+        }
+
+        return true
+    }
+
+    private func updateGitHubIssue() async throws {
         guard let editingItem = editingItem,
             let service = service,
             let issueNumber = editingItem.gitHubIssueNumber
@@ -74,38 +92,82 @@ final class AddEditTodoModel<S: Storage, G: GitHubIssueCreatorProtocol> {
     }
 
     func addWithIssue() async {
-        // Validate GitHub settings
-        guard let service = service else {
-            errorMessage = "GitHub service is not configured"
-            return
-        }
-
-        let settings = service.repositorySettings
-        if settings.owner.isEmpty {
-            errorMessage = "GitHub owner is not configured"
-            return
-        }
-        if settings.repo.isEmpty {
-            errorMessage = "GitHub repository is not configured"
-            return
-        }
-        if service.credentials.personalAccessToken.isEmpty {
-            errorMessage = "GitHub Personal Access Token is not configured"
-            return
-        }
+        guard validateSettings() else { return }
 
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        issueCreationState = .inProgress
+
         do {
             try await repository.add(title: trimmedTitle, detail: detail, createIssue: true)
+            issueCreationState = .succeeded
         } catch {
-            errorMessage = error.localizedDescription
+            let todoError = mapError(error)
+            issueCreationState = .failed(todoError)
         }
     }
 
     func addWithoutIssue() async {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         await repository.addWithoutIssue(title: trimmedTitle, detail: detail)
+    }
+
+    /// Adds a new todo item if no confirmation is needed.
+    ///
+    /// - Returns: `true` if the item was added successfully, `false` if:
+    ///   - A confirmation alert needs to be shown (`showConfirmationAlert` is enabled)
+    ///   - An error occurred while creating a GitHub issue (sets `issueCreationState`)
+    private func addNewItemIfNeeded() async -> Bool {
+        if let repositorySettings = repositorySettings, repositorySettings.showConfirmationAlert
+        {
+            createIssueAlert = .presented(CreateIssueAlertContext())
+            return false
+        } else {
+            issueCreationState = .inProgress
+
+            let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            do {
+                try await repository.add(title: trimmedTitle, detail: detail, createIssue: true)
+                issueCreationState = .succeeded
+                return true
+            } catch {
+                let todoError = mapError(error)
+                issueCreationState = .failed(todoError)
+                return false
+            }
+        }
+    }
+
+    private func validateSettings() -> Bool {
+        guard let service = service else {
+            issueCreationState = .failed(.githubError(.incompleteSettings("GitHub service is not configured")))
+            return false
+        }
+
+        let settings = service.repositorySettings
+        if settings.owner.isEmpty {
+            issueCreationState = .failed(.githubError(.incompleteSettings("GitHub owner is not configured")))
+            return false
+        }
+        if settings.repo.isEmpty {
+            issueCreationState = .failed(.githubError(.incompleteSettings("GitHub repository is not configured")))
+            return false
+        }
+        if service.credentials.accessToken == nil
+            || service.credentials.accessToken?.isEmpty == true
+        {
+            issueCreationState = .failed(.githubError(.authenticationError("GitHub Personal Access Token is not saved. Please save your settings first.")))
+            return false
+        }
+
+        return true
+    }
+
+    private func mapError(_ error: Error) -> TodoError {
+        if let todoError = error as? TodoError {
+            return todoError
+        }
+        return .unknown(error.localizedDescription)
     }
 }
 
@@ -126,6 +188,7 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                 }
             }
             .navigationTitle(model.editingItem == nil ? "New" : "Edit")
+            .issueOperationOverlay(for: model.issueCreationState)
             .toolbar {
                 if model.editingItem == nil {
                     ToolbarItem(placement: .cancellationAction) {
@@ -162,20 +225,23 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                     Button(model.editingItem == nil ? "Add" : "Save") {
                         Task {
                             if await model.save() {
-                                // Update GitHub issue if linked
-                                do {
-                                    try await model.updateGitHubIssue()
-                                } catch {
-                                    logger.error("Failed to update GitHub issue: \(error)")
-                                }
                                 dismiss()
                             }
                         }
                     }
-                    .disabled(model.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(
+                        model.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            || model.issueCreationState.isInProgress
+                    )
                 }
             }
-            .alert("Create GitHub Issue?", isPresented: $model.showCreateIssueAlert) {
+            .alert(
+                "Create GitHub Issue?",
+                isPresented: Binding(
+                    get: { model.createIssueAlert.isPresented },
+                    set: { if !$0 { model.createIssueAlert = .dismissed } }
+                )
+            ) {
                 Button("Skip", role: .cancel) {
                     Task {
                         await model.addWithoutIssue()
@@ -186,7 +252,7 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
                     Task {
                         await model.addWithIssue()
                         // Only dismiss if no error occurred
-                        if model.errorMessage == nil {
+                        if model.issueCreationState.isSucceeded {
                             dismiss()
                         }
                     }
@@ -197,18 +263,27 @@ struct AddEditTodoView<S: Storage, G: GitHubIssueCreatorProtocol>: View {
             .alert(
                 "Failed to Create Issue",
                 isPresented: Binding(
-                    get: { model.errorMessage != nil },
-                    set: { if !$0 { model.errorMessage = nil } }
+                    get: { model.issueCreationState.error != nil },
+                    set: { if !$0 { model.issueCreationState = .idle } }
                 )
             ) {
                 Button("OK", role: .cancel) {
-                    model.errorMessage = nil
+                    model.issueCreationState = .idle
                 }
             } message: {
-                if let errorMessage = model.errorMessage {
-                    Text(errorMessage)
+                if let error = model.issueCreationState.error {
+                    Text(error.localizedDescription)
                 }
             }
+            #if canImport(UIKit)
+            .popup(isPresented: Binding(
+                get: { model.issueCreationState.isInProgress },
+                set: { _ in }
+            )) {
+                ProgressView()
+                    .scaleEffect(2)
+            }
+            #endif
         }
     }
 }

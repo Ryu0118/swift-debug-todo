@@ -2,6 +2,15 @@
   "originHash" : "b2f6196465fe1005c1a436a0c4163dce217807cb74f67f57aa366d22cc4d5a77",
   "pins" : [
     {
+      "identity" : "swift-fullscreen-popup",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Ryu0118/swift-fullscreen-popup",
+      "state" : {
+        "revision" : "8c36e1fc68b6227bd7b95b6e8e44031be90db216",
+        "version" : "0.3.0"
+      }
+    },
+    {
       "identity" : "swift-log",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log.git",

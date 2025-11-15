@@ -38,7 +38,7 @@ public final class GitHubService {
     public var repositorySettings: GitHubRepositorySettings
 
     /// The issue creator for TodoListView.
-    public let issueCreator: GitHubIssueCreator
+    public var issueCreator: GitHubIssueCreator
 
     private let repositorySettingsStorage: GitHubRepositorySettingsStorage
 
@@ -58,8 +58,18 @@ public final class GitHubService {
         self.credentials = credentials
         self.repositorySettings = defaultSettings
         self.repositorySettingsStorage = repositorySettingsStorage
+
+        // Temporary initialization - will be updated after self is fully initialized
         self.issueCreator = GitHubIssueCreator(
-            repositorySettings: defaultSettings,
+            getRepositorySettings: { defaultSettings },
+            credentials: credentials
+        )
+
+        // Update the closure to capture self properly
+        self.issueCreator = GitHubIssueCreator(
+            getRepositorySettings: { [unowned self] in
+                self.repositorySettings
+            },
             credentials: credentials
         )
 

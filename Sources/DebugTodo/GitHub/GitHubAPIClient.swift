@@ -77,7 +77,7 @@ actor GitHubAPIClient {
         title: String? = nil,
         body: String? = nil,
         state: String? = nil,
-        stateReason: String? = nil
+        stateReason: IssueStateReason? = nil
     ) async throws -> GitHubIssue {
         guard let token = accessToken else {
             throw GitHubAPIError.notAuthenticated
@@ -91,6 +91,37 @@ actor GitHubAPIClient {
             issueBody: body,
             state: state,
             stateReason: stateReason,
+            token: token
+        )
+
+        do {
+            let (issue, _) = try await httpClient.send(for: request)
+            return issue
+        } catch let error as NetworkError {
+            throw mapNetworkError(error)
+        }
+    }
+
+    /// Gets an issue by its number.
+    ///
+    /// - Parameters:
+    ///   - owner: The repository owner (username or organization).
+    ///   - repo: The repository name.
+    ///   - issueNumber: The issue number.
+    /// - Returns: The GitHub issue.
+    func getIssue(
+        owner: String,
+        repo: String,
+        issueNumber: Int
+    ) async throws -> GitHubIssue {
+        guard let token = accessToken else {
+            throw GitHubAPIError.notAuthenticated
+        }
+
+        let request = GetIssueRequest(
+            owner: owner,
+            repo: repo,
+            issueNumber: issueNumber,
             token: token
         )
 

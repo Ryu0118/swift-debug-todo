@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import os
 
 @testable import DebugTodo
 
@@ -16,8 +17,8 @@ struct AddEditTodoModelTests {
         #expect(model.editingItem == nil)
         #expect(model.title.isEmpty)
         #expect(model.detail.isEmpty)
-        #expect(model.showCreateIssueAlert == false)
-        #expect(model.errorMessage == nil)
+        #expect(!model.createIssueAlert.isPresented)
+        #expect(model.issueCreationState.error == nil)
     }
 
     @Test("Initialize model for editing existing todo")
@@ -101,7 +102,7 @@ struct AddEditTodoModelTests {
         let result = await model.save()
 
         #expect(result == false)
-        #expect(model.showCreateIssueAlert == true)
+        #expect(model.createIssueAlert.isPresented)
         #expect(repository.activeTodos.isEmpty)
     }
 
@@ -137,13 +138,24 @@ struct AddEditTodoModelTests {
     }
 
     @Test("Add with issue creates todo when service is configured")
-    func addWithIssue() async {
+    func addWithIssue() async throws {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
-        let service = GitHubService()
+
+        // Use test storages that don't have async initialization issues
+        let tokenStorage = TestTokenStorage()
+        let settingsStorage = TestRepositorySettingsStorage()
+
+        let service = GitHubService(
+            tokenStorage: tokenStorage,
+            repositorySettingsStorage: settingsStorage
+        )
+
+        // Configure settings
         service.repositorySettings.owner = "test"
         service.repositorySettings.repo = "repo"
-        service.credentials.personalAccessToken = "test-token"
+        try await service.credentials.saveToken("test-token")
+
         let model = AddEditTodoModel(repository: repository, service: service)
 
         model.title = "New Todo"
@@ -152,7 +164,7 @@ struct AddEditTodoModelTests {
 
         #expect(repository.activeTodos.count == 1)
         #expect(repository.activeTodos.first?.title == "New Todo")
-        #expect(model.errorMessage == nil)
+        #expect(model.issueCreationState.isSucceeded || model.issueCreationState.error == nil)
     }
 
     @Test("Add without issue creates todo")
@@ -169,40 +181,40 @@ struct AddEditTodoModelTests {
         #expect(repository.activeTodos.first?.title == "New Todo")
     }
 
-    @Test("Error message can be set")
-    func errorMessageCanBeSet() {
+    @Test("Issue creation state can be set to failed")
+    func issueCreationStateCanBeSetToFailed() {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
-        model.errorMessage = "Test error"
+        model.issueCreationState = .failed(.validationError("Test error"))
 
-        #expect(model.errorMessage == "Test error")
+        #expect(model.issueCreationState.error != nil)
     }
 
-    @Test("Error message can be cleared")
-    func errorMessageCanBeCleared() {
+    @Test("Issue creation state can be cleared")
+    func issueCreationStateCanBeCleared() {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
-        model.errorMessage = "Test error"
-        model.errorMessage = nil
+        model.issueCreationState = .failed(.validationError("Test error"))
+        model.issueCreationState = .idle
 
-        #expect(model.errorMessage == nil)
+        #expect(model.issueCreationState.error == nil)
     }
 
-    @Test("Show create issue alert flag can be toggled")
-    func showCreateIssueAlertCanBeToggled() {
+    @Test("Create issue alert flag can be toggled")
+    func createIssueAlertCanBeToggled() {
         let repository = TodoRepository(
             storage: InMemoryStorage(), issueCreator: MockGitHubIssueCreator())
         let model = AddEditTodoModel(repository: repository)
 
-        model.showCreateIssueAlert = true
-        #expect(model.showCreateIssueAlert == true)
+        model.createIssueAlert = .presented(AddEditTodoModel<InMemoryStorage, MockGitHubIssueCreator>.CreateIssueAlertContext())
+        #expect(model.createIssueAlert.isPresented)
 
-        model.showCreateIssueAlert = false
-        #expect(model.showCreateIssueAlert == false)
+        model.createIssueAlert = .dismissed
+        #expect(!model.createIssueAlert.isPresented)
     }
 
     @Test("Model preserves repository settings")

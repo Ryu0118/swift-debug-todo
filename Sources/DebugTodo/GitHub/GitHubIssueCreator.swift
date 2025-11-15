@@ -15,6 +15,49 @@ public protocol GitHubIssueCreatorProtocol: Sendable {
     ///
     /// - Parameter item: The todo item to create an issue for.
     func createIssue(for item: TodoItem) async throws -> GitHubIssue?
+
+    /// Gets a GitHub issue by its number.
+    ///
+    /// - Parameters:
+    ///   - owner: The repository owner.
+    ///   - repo: The repository name.
+    ///   - issueNumber: The issue number.
+    /// - Returns: The GitHub issue.
+    func getIssue(owner: String, repo: String, issueNumber: Int) async throws -> GitHubIssue
+
+    /// Updates the state of a GitHub issue.
+    ///
+    /// - Parameters:
+    ///   - owner: The repository owner.
+    ///   - repo: The repository name.
+    ///   - issueNumber: The issue number.
+    ///   - state: The new state ("open" or "closed").
+    ///   - stateReason: The reason for the state change (optional).
+    /// - Returns: The updated GitHub issue.
+    func updateIssueState(
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        state: String,
+        stateReason: IssueStateReason?
+    ) async throws -> GitHubIssue
+
+    /// Updates the content of a GitHub issue.
+    ///
+    /// - Parameters:
+    ///   - owner: The repository owner.
+    ///   - repo: The repository name.
+    ///   - issueNumber: The issue number.
+    ///   - title: The new title.
+    ///   - body: The new body (optional).
+    /// - Returns: The updated GitHub issue.
+    func updateIssueContent(
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        title: String,
+        body: String?
+    ) async throws -> GitHubIssue
 }
 
 /// Represents a GitHub issue.
@@ -48,5 +91,33 @@ public struct NoOpGitHubIssueCreator: GitHubIssueCreatorProtocol {
 
     public func createIssue(for item: TodoItem) async throws -> GitHubIssue? {
         nil
+    }
+
+    public func getIssue(owner: String, repo: String, issueNumber: Int) async throws -> GitHubIssue {
+        throw NoOpError.notSupported
+    }
+
+    public func updateIssueState(
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        state: String,
+        stateReason: IssueStateReason?
+    ) async throws -> GitHubIssue {
+        throw NoOpError.notSupported
+    }
+
+    public func updateIssueContent(
+        owner: String,
+        repo: String,
+        issueNumber: Int,
+        title: String,
+        body: String?
+    ) async throws -> GitHubIssue {
+        throw NoOpError.notSupported
+    }
+
+    private enum NoOpError: Error {
+        case notSupported
     }
 }

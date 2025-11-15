@@ -39,9 +39,11 @@ public struct KeychainTokenStorage: GitHubTokenStorage {
 @Observable
 @MainActor
 public final class GitHubCredentials {
+    /// The saved access token (Single Source of Truth)
     public private(set) var accessToken: String?
+
+    /// Whether the user is authenticated
     public private(set) var isAuthenticated: Bool = false
-    public var personalAccessToken: String
 
     private let storage: GitHubTokenStorage
 
@@ -49,7 +51,6 @@ public final class GitHubCredentials {
     ///
     /// - Parameter storage: Storage for persisting the access token. Defaults to Keychain.
     public init(storage: GitHubTokenStorage = KeychainTokenStorage()) {
-        self.personalAccessToken = ""
         self.storage = storage
 
         // Load token from storage
@@ -57,7 +58,6 @@ public final class GitHubCredentials {
             do {
                 if let token = try await storage.loadToken() {
                     await MainActor.run {
-                        self.personalAccessToken = token
                         self.accessToken = token
                         self.isAuthenticated = true
                     }
@@ -68,28 +68,27 @@ public final class GitHubCredentials {
         }
     }
 
-    /// Saves the current Personal Access Token to Keychain.
-    public func saveToken() async throws {
-        guard !personalAccessToken.isEmpty else {
+    /// Saves the given Personal Access Token to storage.
+    ///
+    /// - Parameter token: The token to save.
+    public func saveToken(_ token: String) async throws {
+        guard !token.isEmpty else {
             throw GitHubAuthError.emptyToken
         }
 
-        try await storage.saveToken(personalAccessToken)
-        accessToken = personalAccessToken
+        try await storage.saveToken(token)
+        accessToken = token
         isAuthenticated = true
     }
 
     /// Signs out and clears the stored token.
-    public func signOut() {
-        personalAccessToken = ""
+    public func signOut() async {
         accessToken = nil
         isAuthenticated = false
-        Task {
-            do {
-                try await storage.deleteToken()
-            } catch {
-                logger.error("Failed to delete token", metadata: ["error": "\(error)"])
-            }
+        do {
+            try await storage.deleteToken()
+        } catch {
+            logger.error("Failed to delete token", metadata: ["error": "\(error)"])
         }
     }
 }

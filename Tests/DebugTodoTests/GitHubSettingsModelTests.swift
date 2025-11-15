@@ -13,35 +13,37 @@ struct GitHubSettingsModelTests {
         let service = GitHubService()
         let model = GitHubSettingsModel(service: service)
 
-        #expect(model.errorMessage == nil)
-        #expect(model.showSuccess == false)
+        #expect(model.saveOperationState.error == nil)
+        #expect(model.showSuccessAlert == false)
     }
 
     @Test("Save configuration sets success flag")
-    func saveConfigurationSetsSuccessFlag() async {
-        let tokenStorage = InMemoryTokenStorage()
-        try? await tokenStorage.saveToken("test-token")
+    func saveConfigurationSetsSuccessFlag() async throws {
+        let tokenStorage = TestTokenStorage()
+        try await tokenStorage.saveToken("test-token")
 
         let service = GitHubService(
             tokenStorage: tokenStorage,
-            repositorySettingsStorage: InMemoryRepositorySettingsStorage()
+            repositorySettingsStorage: TestRepositorySettingsStorage()
         )
-        service.repositorySettings = GitHubRepositorySettings(
-            owner: "test", repo: "repo", showConfirmationAlert: false)
-        service.credentials.personalAccessToken = "test-token"
 
         let model = GitHubSettingsModel(service: service)
+        model.editingOwner = "test"
+        model.editingRepo = "repo"
+        model.editingShowConfirmationAlert = false
+        model.editingToken = "test-token"
 
         await model.saveConfiguration()
 
-        #expect(model.showSuccess == true)
-        #expect(model.errorMessage == nil)
+        #expect(model.saveOperationState.isSucceeded)
+        #expect(model.showSuccessAlert == true)
+        #expect(model.saveOperationState.error == nil)
     }
 
     @Test("Save configuration sets error message on failure")
     func saveConfigurationSetsErrorOnFailure() async {
         let service = GitHubService(
-            tokenStorage: InMemoryTokenStorage(),
+            tokenStorage: TestTokenStorage(),
             repositorySettingsStorage: FailingRepositorySettingsStorage()
         )
 
@@ -49,8 +51,9 @@ struct GitHubSettingsModelTests {
 
         await model.saveConfiguration()
 
-        #expect(model.errorMessage != nil)
-        #expect(model.showSuccess == false)
+        #expect(model.saveOperationState.error != nil)
+        #expect(!model.saveOperationState.isSucceeded)
+        #expect(model.showSuccessAlert == false)
     }
 
     @Test("Model holds reference to service")
@@ -69,100 +72,41 @@ struct GitHubSettingsModelTests {
     @Test("Error message can be cleared")
     func errorMessageCanBeCleared() async {
         let service = GitHubService(
-            tokenStorage: InMemoryTokenStorage(),
+            tokenStorage: TestTokenStorage(),
             repositorySettingsStorage: FailingRepositorySettingsStorage()
         )
 
         let model = GitHubSettingsModel(service: service)
 
         await model.saveConfiguration()
-        #expect(model.errorMessage != nil)
+        #expect(model.saveOperationState.error != nil)
 
-        model.errorMessage = nil
-        #expect(model.errorMessage == nil)
+        model.saveOperationState = .idle
+        #expect(model.saveOperationState.error == nil)
     }
 
     @Test("Success flag can be reset")
-    func successFlagCanBeReset() async {
-        let tokenStorage = InMemoryTokenStorage()
-        try? await tokenStorage.saveToken("test-token")
+    func successFlagCanBeReset() async throws {
+        let tokenStorage = TestTokenStorage()
+        try await tokenStorage.saveToken("test-token")
 
         let service = GitHubService(
             tokenStorage: tokenStorage,
-            repositorySettingsStorage: InMemoryRepositorySettingsStorage()
+            repositorySettingsStorage: TestRepositorySettingsStorage()
         )
-        service.repositorySettings = GitHubRepositorySettings(
-            owner: "test", repo: "repo", showConfirmationAlert: false)
-        service.credentials.personalAccessToken = "test-token"
 
         let model = GitHubSettingsModel(service: service)
+        model.editingOwner = "test"
+        model.editingRepo = "repo"
+        model.editingShowConfirmationAlert = false
+        model.editingToken = "test-token"
 
         await model.saveConfiguration()
-        #expect(model.showSuccess == true)
+        #expect(model.showSuccessAlert == true)
 
-        model.showSuccess = false
-        #expect(model.showSuccess == false)
+        model.showSuccessAlert = false
+        #expect(model.showSuccessAlert == false)
     }
 }
 
-// MARK: - Mock Storage Implementations
-
-final class InMemoryTokenStorage: @unchecked Sendable, GitHubTokenStorage {
-    private let token = OSAllocatedUnfairLock<String?>(initialState: nil)
-
-    func saveToken(_ token: String) async throws {
-        self.token.withLock { $0 = token }
-    }
-
-    func loadToken() async throws -> String? {
-        token.withLock { $0 }
-    }
-
-    func deleteToken() async throws {
-        token.withLock { $0 = nil }
-    }
-
-    nonisolated init() {}
-}
-
-final class InMemoryRepositorySettingsStorage: @unchecked Sendable, GitHubRepositorySettingsStorage
-{
-    private let settings = OSAllocatedUnfairLock<GitHubRepositorySettings?>(initialState: nil)
-
-    func save(_ settings: GitHubRepositorySettings) async throws {
-        self.settings.withLock { $0 = settings }
-    }
-
-    func load() async throws -> GitHubRepositorySettings {
-        guard let settings = settings.withLock({ $0 }) else {
-            throw StorageError.notFound
-        }
-        return settings
-    }
-
-    nonisolated init() {}
-
-    enum StorageError: Error {
-        case notFound
-    }
-}
-
-final class FailingRepositorySettingsStorage: GitHubRepositorySettingsStorage {
-    func save(_ settings: GitHubRepositorySettings) async throws {
-        throw SaveError.failed
-    }
-
-    func load() async throws -> GitHubRepositorySettings {
-        throw LoadError.failed
-    }
-
-    nonisolated init() {}
-
-    enum SaveError: Error {
-        case failed
-    }
-
-    enum LoadError: Error {
-        case failed
-    }
-}
+// Note: Test storage implementations are in TestHelpers.swift
